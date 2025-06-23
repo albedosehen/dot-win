@@ -135,6 +135,9 @@ function Invoke-DotWinConfiguration {
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
                 Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level Information
                 
+                # Create configuration parser
+                $parser = [DotWinConfigurationParser]::new()
+
                 if (Test-Path $ConfigurationPath -PathType Container) {
                     # Load all configuration files from directory
                     $configFiles = Get-ChildItem -Path $ConfigurationPath -Filter "*.json" -Recurse
@@ -142,18 +145,44 @@ function Invoke-DotWinConfiguration {
                         throw "No configuration files found in directory: $ConfigurationPath"
                     }
                     
+                    # Create a combined configuration from all files
                     $Configuration = [DotWinConfiguration]::new("DirectoryConfiguration")
+                    $Configuration.Description = "Combined configuration from directory: $ConfigurationPath"
+
                     foreach ($file in $configFiles) {
                         Write-DotWinLog "Loading configuration file: $($file.FullName)" -Level Verbose
-                        # TODO: Implement configuration file parsing in future phases
-                        Write-Warning "Configuration file parsing not yet implemented: $($file.FullName)"
+                        try {
+                            $fileConfig = $parser.ParseFromFile($file.FullName)
+
+                            # Add all items from the file configuration to the combined configuration
+                            foreach ($item in $fileConfig.Items) {
+                                try {
+                                    $Configuration.AddItem($item)
+                                } catch {
+                                    Write-Warning "Skipping duplicate item '$($item.Name)' from file '$($file.Name)': $($_.Exception.Message)"
+                                }
+                            }
+
+                            # Merge metadata
+                            foreach ($key in $fileConfig.Metadata.Keys) {
+                                if (-not $Configuration.Metadata.ContainsKey($key)) {
+                                    $Configuration.Metadata[$key] = $fileConfig.Metadata[$key]
+                                }
+                            }
+
+                            Write-DotWinLog "Successfully loaded $($fileConfig.Items.Count) items from: $($file.Name)" -Level Information
+                        } catch {
+                            Write-Warning "Error loading configuration file '$($file.FullName)': $($_.Exception.Message)"
+                        }
                     }
                 } else {
                     # Load single configuration file
-                    $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
-                    # TODO: Implement configuration object creation from JSON in future phases
-                    $Configuration = [DotWinConfiguration]::new("FileConfiguration")
-                    Write-Warning "Configuration file parsing not yet implemented. Using empty configuration."
+                    try {
+                        $Configuration = $parser.ParseFromFile($ConfigurationPath)
+                        Write-DotWinLog "Successfully loaded configuration with $($Configuration.Items.Count) items" -Level Information
+                    } catch {
+                        throw "Error loading configuration file '$ConfigurationPath': $($_.Exception.Message)"
+                    }
                 }
             }
 
