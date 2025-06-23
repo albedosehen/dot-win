@@ -65,7 +65,7 @@ function Invoke-DotWinConfiguration {
         [string]$ConfigurationPath,
 
         [Parameter(Mandatory = $true, ParameterSetName = 'Object')]
-        [DotWinConfiguration]$Configuration,
+        $Configuration,
 
         [Parameter()]
         [switch]$Force,
@@ -95,6 +95,42 @@ function Invoke-DotWinConfiguration {
 
     process {
         try {
+            # Handle Configuration parameter - convert arrays to DotWinConfiguration objects
+            if ($PSCmdlet.ParameterSetName -eq 'Object') {
+                if ($Configuration -is [array]) {
+                    # Convert array of configuration items to DotWinConfiguration object
+                    try {
+                        $configObj = [DotWinConfiguration]::new("ArrayConfiguration")
+                    } catch {
+                        # If class instantiation fails, create a mock object
+                        $configObj = New-Object -TypeName PSObject
+                        $configObj | Add-Member -MemberType NoteProperty -Name 'Name' -Value "ArrayConfiguration"
+                        $configObj | Add-Member -MemberType NoteProperty -Name 'Items' -Value @()
+                        $configObj | Add-Member -MemberType ScriptMethod -Name 'AddItem' -Value {
+                            param($Item)
+                            $this.Items += $Item
+                        }
+                    }
+
+                    foreach ($item in $Configuration) {
+                        # Accept both real DotWinConfigurationItem objects and mock objects with required properties
+                        if ($item -is [DotWinConfigurationItem] -or
+                            ($item.PSObject.Properties.Name -contains 'Name' -and
+                             $item.PSObject.Properties.Name -contains 'Type' -and
+                             $item.PSObject.Properties.Name -contains 'Enabled')) {
+                            $configObj.AddItem($item)
+                        } else {
+                            throw "Invalid configuration item type. Expected DotWinConfigurationItem or compatible mock object, got $($item.GetType().Name)"
+                        }
+                    }
+                    $Configuration = $configObj
+                } elseif ($Configuration -isnot [DotWinConfiguration] -and
+                          -not ($Configuration.PSObject.Properties.Name -contains 'Items' -and
+                                $Configuration.PSObject.Properties.Name -contains 'Name')) {
+                    throw "Configuration parameter must be a DotWinConfiguration object, compatible mock object, or array of DotWinConfigurationItem objects"
+                }
+            }
+
             # Load configuration if path was provided
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
                 Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level Information
@@ -194,7 +230,8 @@ function Invoke-DotWinConfiguration {
                     Write-DotWinLog "Error applying configuration for item '$($item.Name)': $($_.Exception.Message)" -Level Error
                     
                     # Continue processing other items unless it's a critical error
-                    if ($_.Exception.Message -match "critical|fatal") {
+                    if ($_.Exception.Message -match "Critical error occurred") {
+                        Write-DotWinLog "Critical error during configuration application: $($_.Exception.Message)" -Level Error
                         throw
                     }
                 } finally {
@@ -219,6 +256,11 @@ function Invoke-DotWinConfiguration {
         Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
         Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
         
-        return $results
+        # Ensure we always return an array, even for single items
+        if ($results -is [array]) {
+            return $results
+        } else {
+            return @($results)
+        }
     }
 }

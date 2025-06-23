@@ -1,577 +1,413 @@
-﻿# DotWin
+﻿# DotWin - Enterprise Windows Configuration Management System
 
-A comprehensive Windows 11 configuration management system for declarative system configuration and dotfiles management, similar to NixOS dotfiles or Terraform.
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue.svg)](https://github.com/PowerShell/PowerShell)
+[![Windows](https://img.shields.io/badge/Windows-11%2F10-blue.svg)](https://www.microsoft.com/windows)
+[![License](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
 
-## Description
+A comprehensive, enterprise-grade Windows 11 configuration management system for declarative system configuration and dotfiles management. DotWin provides intelligent, adaptive system configuration with advanced hardware management, intelligent profiling, and automated optimization recommendations.
 
-DotWin provides a PowerShell-based framework for managing Windows system configurations in a declarative, reproducible manner. It allows you to define your desired system state and automatically apply or validate configurations across multiple machines with advanced hardware management, WSL integration, and comprehensive system tools.
+## 🚀 Key Features
 
-## Features
+### Intelligent System Profiling
 
-- **Declarative Configuration**: Define your system state using configuration objects
+- **Hardware Detection**: Comprehensive CPU, GPU, memory, and storage analysis
+- **Software Inventory**: Automated package manager and application discovery
+- **User Behavior Analysis**: Technical proficiency and usage pattern detection
+- **Performance Metrics**: System optimization potential scoring
+
+### Smart Recommendation Engine
+
+- **Rule-Based Intelligence**: Context-aware configuration suggestions
+- **Conflict Resolution**: Automatic handling of incompatible recommendations
+- **Priority Scoring**: Confidence-based recommendation ranking
+- **Automated Application**: Safe, high-confidence recommendation deployment
+
+### Enterprise-Grade Features
+
+- **Declarative Configuration**: Infrastructure-as-code approach to system management
 - **Idempotent Operations**: Safe to run multiple times without side effects
-- **Extensible Architecture**: Plugin-based system for different configuration types
-- **Hardware Management**: Automated chipset and driver detection, search, and installation
-- **WSL Integration**: Complete Windows Subsystem for Linux configuration management
-- **System Tools**: Automated installation of essential development and system utilities
-- **Comprehensive Testing**: Validate configurations without making changes
-- **Rich Status Reporting**: Detailed system and compliance status information
-- **Package Management**: Automated software installation via Winget and Chocolatey
-- **Profile Management**: PowerShell and Windows Terminal profile configuration
+- **Parallel Processing**: PowerShell 7+ optimized performance
+- **Backup & Rollback**: Automatic system state protection
+- **Comprehensive Logging**: Detailed audit trails and compliance reporting
 
-## Getting Started
+### Hardware & Driver Management
+
+- **Automated Detection**: Multi-vendor chipset and driver identification
+- **Driver Updates**: Windows Update and manufacturer source integration
+- **System Tools**: Curated development and productivity tool installation
+- **WSL Integration**: Complete Windows Subsystem for Linux management
+
+## 📋 Quick Start
 
 ### Prerequisites
 
-- Windows 11 (or Windows 10 with PowerShell 5.1+)
-- PowerShell 5.1 or PowerShell Core 7.x
-- Administrator privileges (for some configuration operations)
-- Internet connection (for package downloads and driver updates)
+- **Operating System**: Windows 11 (or Windows 10 with PowerShell 5.1+)
+- **PowerShell**: 5.1 or PowerShell Core 7.x (recommended)
+- **Privileges**: Administrator rights for system-level operations
+- **Network**: Internet connection for package downloads and updates
 
 ### Installation
 
-1. Clone or download the DotWin repository
-2. Open PowerShell as Administrator
-3. Import the module:
+1. **Clone the Repository**
+
+   ```powershell
+   git clone https://github.com/your-org/DotWin.git
+   cd DotWin
+   ```
+
+2. **Import the Module**
+
+   ```powershell
+   # Run as Administrator
+   Import-Module .\DotWin.psd1 -Force
+   ```
+
+3. **Verify Installation**
+
+   ```powershell
+   Get-DotWinStatus -IncludeSystemInfo
+   ```
+
+### Basic Usage
 
 ```powershell
-Import-Module .\DotWin.psd1
-```
+# 1. Profile your system for intelligent recommendations
+$profile = Get-DotWinSystemProfile -UseParallel
 
-### Quick Start
+# 2. Get personalized configuration recommendations
+$recommendations = Get-DotWinRecommendations -SystemProfile $profile -Priority "High"
 
-```powershell
-# Check system status
-Get-DotWinStatus -IncludeSystemInfo -IncludeModuleInfo
+# 3. Apply intelligent configuration with backup
+Invoke-DotWinProfiledConfiguration -ApplyRecommendations -BackupConfiguration
 
-# Get hardware information
-Get-ChipsetInformation -IncludeDrivers
-
-# Install essential development tools
+# 4. Install essential development tools
 Install-SystemTools -ToolCategory Development
 
-# Search for driver updates
-Search-ChipsetDriver -DriverType All -IncludeInstalled
-
-# Configure WSL with Ubuntu
-$wslConfig = $WSLConfigurations.UbuntuDev
-Invoke-DotWinConfiguration -Configuration $wslConfig
+# 5. Update system drivers
+Search-ChipsetDriver -DriverType All | Where-Object { $_.RecommendedAction -eq 'Update' } |
+    ForEach-Object { Install-ChipsetDriver -DriverInfo $_ }
 ```
 
-## Core Components
+## 🏗️ Architecture Overview
 
-### Classes
+```
+DotWin Enterprise Architecture
+├── Core Engine
+│   ├── System Profiler (Hardware/Software/User Analysis)
+│   ├── Recommendation Engine (AI-Driven Suggestions)
+│   ├── Configuration Manager (Declarative State Management)
+│   └── Plugin System (Extensible Architecture)
+├── Hardware Management
+│   ├── Driver Detection & Installation
+│   ├── Chipset Optimization
+│   └── Performance Monitoring
+├── Software Management
+│   ├── Package Managers (Winget/Chocolatey/Scoop)
+│   ├── Application Installation
+│   └── Windows Feature Management
+├── Enterprise Features
+│   ├── Group Policy Integration
+│   ├── Centralized Configuration
+│   ├── Audit Logging
+│   └── Compliance Reporting
+└── User Interface
+    ├── PowerShell API
+    ├── GUI Management Interface
+    └── Web Dashboard (Future)
+```
 
-- **DotWinConfiguration**: Container for configuration items
-- **DotWinConfigurationItem**: Base class for individual configuration items
-- **DotWinWSLConfiguration**: Specialized class for WSL distribution management
-- **DotWinValidationResult**: Results from configuration testing
-- **DotWinExecutionResult**: Results from configuration application
-- **DotWinSystemStatus**: System status and compliance information
+## 📖 Comprehensive Examples
 
-### Hardware Management Functions
-
-#### Get-ChipsetInformation
-
-Retrieves comprehensive hardware information including motherboard, chipset, CPU, memory, storage, network, and graphics details.
+### Example 1: Complete Development Environment Setup
 
 ```powershell
-# Basic hardware information
-$hwInfo = Get-ChipsetInformation
-
-# Detailed information with drivers
-$hwInfo = Get-ChipsetInformation -IncludeDrivers -Format Table
-
-# Access specific hardware components
-$hwInfo.CPU | Format-Table
-$hwInfo.Memory.Modules | Format-Table
-```
-
-#### Search-ChipsetDriver
-
-Searches for available drivers from multiple sources including Windows Update, manufacturer websites, and local driver stores.
-
-```powershell
-# Search for all available drivers
-$drivers = Search-ChipsetDriver
-
-# Search for specific driver types
-$graphicsDrivers = Search-ChipsetDriver -DriverType Graphics -Source WindowsUpdate
-
-# Search with hardware information
-$hwInfo = Get-ChipsetInformation
-$drivers = Search-ChipsetDriver -HardwareInfo $hwInfo -IncludeInstalled
-```
-
-#### Install-ChipsetDriver
-
-Installs drivers with support for multiple sources and automatic system restore point creation.
-
-```powershell
-# Install drivers from search results
-$drivers = Search-ChipsetDriver -DriverType Chipset
-$updateDrivers = $drivers | Where-Object { $_.RecommendedAction -eq 'Update' }
-Install-ChipsetDriver -DriverInfo $updateDrivers[0]
-
-# Install from local driver package
-Install-ChipsetDriver -DriverPath "C:\Drivers\chipset.inf"
-
-# Install with automatic restart
-Install-ChipsetDriver -DriverType Graphics -Source WindowsUpdate -Restart
-```
-
-#### Install-SystemTools
-
-Installs essential system tools and utilities from curated catalogs.
-
-```powershell
-# Install all essential tools
-Install-SystemTools
-
-# Install specific tool categories
-Install-SystemTools -ToolCategory Development
-Install-SystemTools -ToolCategory System -Source Chocolatey
-
-# Install specific tools
-Install-SystemTools -ToolNames @('git', 'vscode', 'powershell')
-```
-
-### WSL Management
-
-#### WSL Configuration Classes
-
-Comprehensive WSL distribution management with predefined configurations.
-
-```powershell
-# Available predefined configurations
-$WSLConfigurations.UbuntuDev      # Ubuntu development environment
-$WSLConfigurations.DebianServer   # Debian server environment
-$WSLConfigurations.KaliSecurity   # Kali Linux security testing
-$WSLConfigurations.AlpineLite     # Alpine lightweight environment
-
-# Create custom WSL configuration
-$customWSL = [DotWinWSLConfiguration]::new("MyCustom", "Ubuntu-22.04")
-$customWSL.Settings = @{
-    DefaultUser = "developer"
-    Memory = "8GB"
-    Processors = "4"
-}
-$customWSL.Packages = @("docker.io", "kubectl", "terraform")
-```
-
-#### WSL Helper Functions
-
-```powershell
-# Check WSL prerequisites
-Test-WSLPrerequisites
-
-# Get available distributions
-Get-AvailableWSLDistributions
-
-# Test WSL configuration
-$wslConfig = $WSLConfigurations.UbuntuDev
-$wslConfig.Test()
-
-# Apply WSL configuration
-$wslConfig.Apply()
-```
-
-### Core Functions
-
-#### Get-DotWinStatus
-
-Comprehensive system status reporting with detailed information.
-
-```powershell
-# Basic status
-Get-DotWinStatus
-
-# Detailed status with system and module information
-Get-DotWinStatus -IncludeSystemInfo -IncludeModuleInfo
-
-# Status formatted as a table
-Get-DotWinStatus -IncludeSystemInfo -Format Table
-```
-
-#### Test-DotWinConfiguration
-
-Validate configurations without making changes (dry-run mode).
-
-```powershell
-# Test a configuration
-$config = [DotWinConfiguration]::new("MySystemConfig")
-$results = Test-DotWinConfiguration -Configuration $config
-
-# Test with detailed output
-$results = Test-DotWinConfiguration -Configuration $config -Detailed
-```
-
-#### Invoke-DotWinConfiguration
-
-Apply configurations to the system with comprehensive logging.
-
-```powershell
-# Apply configuration
-$config = [DotWinConfiguration]::new("MySystemConfig")
-$results = Invoke-DotWinConfiguration -Configuration $config
-
-# Apply with force (override existing configurations)
-$results = Invoke-DotWinConfiguration -Configuration $config -Force
-```
-
-### Package and Application Management
-
-```powershell
-# Install packages
-Install-Packages -WhatIf  # Preview changes
-Install-Packages          # Apply changes
-
-# Install applications
-Install-Applications -Category Development
-
-# Enable Windows features
-Enable-Features -FeatureNames @("WSL", "Hyper-V")
-
-# Remove bloatware
-Remove-Bloatware -WhatIf
-
-# Disable telemetry
-Disable-Telemetry
-```
-
-### Profile Configuration
-
-```powershell
-# Configure PowerShell profile
-Set-PowershellProfile -ProfileType AllUsers
-
-# Configure Windows Terminal
-Set-TerminalProfile -Theme Dark -FontSize 12
-```
-
-## Architecture
-
-DotWin follows a modular, extensible architecture:
-
-```text
-DotWin/
-├── DotWin.psd1                    # Module manifest
-├── DotWin.psm1                    # Main module file
-├── Classes.ps1                    # Core configuration classes
-├── Test-Module.ps1                # Comprehensive test suite
-├── functions/                     # Public API functions
-│   ├── Get-DotWinStatus.ps1
-│   ├── Test-DotWinConfiguration.ps1
-│   ├── Invoke-DotWinConfiguration.ps1
-│   ├── Get-ChipsetInformation.ps1      # Hardware detection
-│   ├── Search-ChipsetDriver.ps1        # Driver discovery
-│   ├── Install-ChipsetDriver.ps1       # Driver installation
-│   ├── Install-SystemTools.ps1         # System utilities
-│   ├── Install-Packages.ps1            # Package management
-│   ├── Install-Applications.ps1        # Application installation
-│   ├── Enable-Features.ps1             # Windows features
-│   ├── Remove-Bloatware.ps1            # Bloatware removal
-│   ├── Disable-Telemetry.ps1           # Privacy configuration
-│   ├── Set-PowershellProfile.ps1       # PowerShell profiles
-│   └── Set-TerminalProfile.ps1         # Terminal configuration
-├── config/                        # Configuration modules
-│   ├── Packages.ps1               # Package definitions
-│   ├── Tools.ps1                  # Tool configurations
-│   ├── Profile.ps1                # Profile settings
-│   ├── Terminal.ps1               # Terminal settings
-│   └── WSL.ps1                    # WSL configurations
-├── apps/                          # Application-specific configurations
-│   └── Winget.ps1                 # Winget integration
-└── scripts/                       # Utility scripts
-    └── legacy-helper.ps1          # Legacy system support
-```
-
-## Development Status
-
-### Current Phase: Phase 3 - Advanced Features (COMPLETED)
-
-✅ **Phase 1 - Foundation (Completed):**
-
-- Core module structure and manifest
-- Foundational configuration classes
-- Public API functions with comprehensive help
-- Basic testing and validation framework
-- System status reporting
-- Module initialization and error handling
-
-✅ **Phase 2 - Core Functionality (Completed):**
-
-- Package management system
-- Application installation framework
-- Windows feature management
-- System configuration (bloatware removal, telemetry)
-- Profile management (PowerShell, Terminal)
-- Configuration validation and testing
-
-✅ **Phase 3 - Advanced Features (Completed):**
-
-- **Hardware Management**: Complete chipset and driver management system
-  - Hardware detection and information gathering
-  - Driver search from multiple sources (Windows Update, manufacturers, local)
-  - Automated driver installation with restore points
-  - System tools installation and management
-- **WSL Integration**: Comprehensive Windows Subsystem for Linux support
-  - Multiple distribution configurations (Ubuntu, Debian, Kali, Alpine)
-  - Automated package installation and configuration
-  - Custom environment setup and management
-- **Testing Framework**: Comprehensive module testing
-  - Unit tests for all functions and classes
-  - Integration tests for complete workflows
-  - Performance testing and validation
-  - Error handling verification
-- **Documentation**: Complete user and developer documentation
-
-🚧 **Future Enhancements:**
-
-- GUI management interface
-- Configuration templates and profiles
-- Advanced validation and rollback capabilities
-- Cloud synchronization of configurations
-- Enterprise deployment features
-
-## Examples
-
-### Complete System Setup
-
-```powershell
-# Import the module
-Import-Module .\DotWin.psd1
-
-# Check system status
-$status = Get-DotWinStatus -IncludeSystemInfo -IncludeModuleInfo
-Write-Host "System: $($status.OperatingSystem) on $($status.ComputerName)"
-
-# Get hardware information
-$hardware = Get-ChipsetInformation -IncludeDrivers
-Write-Host "CPU: $($hardware.CPU[0].Name)"
-Write-Host "Memory: $($hardware.Memory.TotalSlots) slots, $($hardware.System.TotalPhysicalMemory) GB total"
-
-# Search for driver updates
-$drivers = Search-ChipsetDriver -IncludeInstalled
-$updates = $drivers | Where-Object { $_.RecommendedAction -eq 'Update' }
-Write-Host "Found $($updates.Count) driver updates available"
-
-# Install essential development tools
-Write-Host "Installing development tools..."
-$toolResults = Install-SystemTools -ToolCategory Development
-$successful = ($toolResults | Where-Object { $_.Success }).Count
-Write-Host "Successfully installed $successful tools"
-
-# Configure WSL Ubuntu development environment
-Write-Host "Setting up WSL Ubuntu development environment..."
-$wslConfig = $WSLConfigurations.UbuntuDev
-if (-not $wslConfig.Test()) {
-    $wslConfig.Apply()
-    Write-Host "WSL Ubuntu environment configured successfully"
-} else {
-    Write-Host "WSL Ubuntu environment already configured"
-}
-
-# Create and apply system configuration
-$config = [DotWinConfiguration]::new("DevelopmentMachine")
-$config.Description = "Complete development machine setup"
-
-# Test configuration before applying
-$testResults = Test-DotWinConfiguration -Configuration $config
-Write-Host "Configuration test results: $($testResults.PassedItems) passed, $($testResults.FailedItems) failed"
-
-# Apply configuration
-$applyResults = Invoke-DotWinConfiguration -Configuration $config
-Write-Host "Configuration applied successfully"
-```
-
-### Hardware Management Workflow
-
-```powershell
-# Comprehensive hardware analysis and driver management
-Write-Host "=== Hardware Analysis and Driver Management ==="
-
-# Step 1: Gather hardware information
-Write-Host "Gathering hardware information..."
-$hardware = Get-ChipsetInformation -IncludeDrivers -Format Object
-
-# Display summary
-Write-Host "`nHardware Summary:"
-Write-Host "  Computer: $($hardware.System.Manufacturer) $($hardware.System.Model)"
-Write-Host "  CPU: $($hardware.CPU[0].Name) ($($hardware.CPU[0].Cores) cores)"
-Write-Host "  Memory: $($hardware.System.TotalPhysicalMemory) GB"
-Write-Host "  Graphics: $($hardware.Graphics[0].Name)"
-
-# Step 2: Search for driver updates
-Write-Host "`nSearching for driver updates..."
-$driverSearch = Search-ChipsetDriver -HardwareInfo $hardware -IncludeInstalled
-
-# Analyze results
-$updates = $driverSearch | Where-Object { $_.RecommendedAction -eq 'Update' }
-$installs = $driverSearch | Where-Object { $_.RecommendedAction -eq 'Install' }
-
-Write-Host "  Updates available: $($updates.Count)"
-Write-Host "  New drivers available: $($installs.Count)"
-
-# Step 3: Install critical updates (with confirmation)
-if ($updates.Count -gt 0) {
-    Write-Host "`nCritical driver updates found:"
-    $updates | ForEach-Object {
-        Write-Host "  - $($_.DeviceName) ($($_.DeviceClass))"
+# Profile system and get development-focused recommendations
+$profile = Get-DotWinSystemProfile -UseParallel -ExportPath ".\profiles\dev-machine.json"
+
+# Filter for development-specific recommendations
+$devRecommendations = Get-DotWinRecommendations -SystemProfile $profile -Category "Development","Software" -Priority "High","Medium"
+
+# Apply configuration with intelligent recommendations
+$result = Invoke-DotWinProfiledConfiguration -ApplyRecommendations -RecommendationPriority "High","Medium" -BackupConfiguration -UseParallel
+
+# Install development tools based on detected user type
+if ($profile.Software.GetUserType() -eq "Developer") {
+    Install-SystemTools -ToolCategory Development -Source Winget
+
+    # Configure WSL for development
+    $wslConfig = $WSLConfigurations.UbuntuDev
+    if (-not $wslConfig.Test()) {
+        $wslConfig.Apply()
     }
+}
 
-    $confirm = Read-Host "Install driver updates? (y/N)"
-    if ($confirm -eq 'y' -or $confirm -eq 'Y') {
-        foreach ($update in $updates) {
-            Write-Host "Installing driver for $($update.DeviceName)..."
-            $result = Install-ChipsetDriver -DriverInfo $update
-            if ($result.Success) {
-                Write-Host "  ✓ Success" -ForegroundColor Green
-            } else {
-                Write-Host "  ✗ Failed: $($result.Message)" -ForegroundColor Red
-            }
+# Display optimization summary
+Write-Host "System Optimization Complete!" -ForegroundColor Green
+Write-Host "Performance Score: $($profile.SystemMetrics.PerformanceScore)/100" -ForegroundColor Cyan
+Write-Host "Developer Friendliness: $($profile.SystemMetrics.DeveloperFriendliness)/100" -ForegroundColor Cyan
+Write-Host "Applied Recommendations: $($result.Summary.RecommendationsApplied)" -ForegroundColor Cyan
+```
+
+### Example 2: Enterprise Deployment with Compliance
+
+```powershell
+# Enterprise configuration with audit logging
+$enterpriseConfig = @{
+    ConfigurationPath = "\\server\configs\enterprise-baseline.json"
+    BackupConfiguration = $true
+    RollbackOnFailure = $true
+    ExportProfile = "\\audit\profiles\$env:COMPUTERNAME-$(Get-Date -Format 'yyyyMMdd').json"
+    ExportRecommendations = "\\audit\recommendations\$env:COMPUTERNAME-$(Get-Date -Format 'yyyyMMdd').json"
+}
+
+# Apply enterprise configuration with full audit trail
+$result = Invoke-DotWinProfiledConfiguration @enterpriseConfig
+
+# Generate compliance report
+$complianceReport = @{
+    ComputerName = $env:COMPUTERNAME
+    Timestamp = Get-Date
+    ConfigurationApplied = $result.Success
+    SecurityScore = $result.SystemProfile.SystemMetrics.SecurityScore
+    ComplianceItems = $result.ConfigurationResults | Where-Object { $_.Success }
+    NonComplianceItems = $result.ConfigurationResults | Where-Object { -not $_.Success }
+    RecommendationsApplied = $result.Summary.RecommendationsApplied
+}
+
+$complianceReport | ConvertTo-Json -Depth 10 | Set-Content "\\audit\compliance\$env:COMPUTERNAME-compliance.json"
+```
+
+### Example 3: Gaming System Optimization
+
+```powershell
+# Profile gaming system
+$profile = Get-DotWinSystemProfile
+
+if ($profile.Hardware.IsGamingOptimized()) {
+    Write-Host "Gaming-optimized hardware detected!" -ForegroundColor Green
+
+    # Get gaming-specific recommendations
+    $gamingRecs = Get-DotWinRecommendations -SystemProfile $profile |
+        Where-Object { $_.Category -in @("Hardware", "Performance") -and $_.Title -like "*Gaming*" -or $_.Title -like "*Graphics*" }
+
+    # Apply gaming optimizations
+    foreach ($rec in $gamingRecs) {
+        if ($rec.Priority -eq "High" -and $rec.ConfidenceScore -gt 0.8) {
+            Write-Host "Applying: $($rec.Title)" -ForegroundColor Yellow
+            # Apply recommendation logic here
         }
     }
-}
-```
 
-### WSL Development Environment Setup
+    # Install gaming tools
+    Install-SystemTools -ToolNames @("Steam", "Discord", "OBS Studio") -Source Winget
 
-```powershell
-# Complete WSL development environment setup
-Write-Host "=== WSL Development Environment Setup ==="
-
-# Check prerequisites
-if (-not (Test-WSLPrerequisites)) {
-    Write-Error "System does not meet WSL prerequisites"
-    return
-}
-
-# Show available distributions
-$availableDistros = Get-AvailableWSLDistributions
-Write-Host "Available WSL distributions:"
-$availableDistros | Where-Object { $_.Recommended } | ForEach-Object {
-    Write-Host "  - $($_.Name): $($_.Description)"
-}
-
-# Configure Ubuntu development environment
-$ubuntuDev = $WSLConfigurations.UbuntuDev
-Write-Host "`nConfiguring Ubuntu development environment..."
-Write-Host "  Distribution: $($ubuntuDev.DistributionName)"
-Write-Host "  Packages: $($ubuntuDev.Packages.Count) development packages"
-Write-Host "  Settings: $($ubuntuDev.Settings.Keys -join ', ')"
-
-# Test current state
-$currentState = $ubuntuDev.GetCurrentState()
-Write-Host "`nCurrent WSL state:"
-Write-Host "  WSL Enabled: $($currentState.WSLEnabled)"
-Write-Host "  Distribution Installed: $($currentState.DistributionInstalled)"
-Write-Host "  Distribution Running: $($currentState.DistributionRunning)"
-
-# Apply configuration if needed
-if (-not $ubuntuDev.Test()) {
-    Write-Host "`nApplying WSL configuration..."
-    try {
-        $ubuntuDev.Apply()
-        Write-Host "WSL Ubuntu development environment configured successfully!" -ForegroundColor Green
-    } catch {
-        Write-Error "Failed to configure WSL: $($_.Exception.Message)"
+    # Optimize graphics drivers
+    if ($profile.Hardware.GPU_Manufacturers -contains "NVIDIA") {
+        Install-ChipsetDriver -DriverType Graphics -Source WindowsUpdate
     }
-} else {
-    Write-Host "WSL Ubuntu development environment is already configured." -ForegroundColor Green
-}
-
-# Verify installation
-Write-Host "`nVerifying WSL installation..."
-$finalState = $ubuntuDev.GetCurrentState()
-if ($finalState.DistributionInstalled -and $finalState.DistributionRunning) {
-    Write-Host "✓ WSL Ubuntu is installed and running" -ForegroundColor Green
-    Write-Host "  Default user: $($finalState.DefaultUser)"
-    Write-Host "  Version: $($finalState.Version)"
-} else {
-    Write-Host "✗ WSL Ubuntu setup incomplete" -ForegroundColor Red
 }
 ```
 
-## Testing
+## 🔧 Configuration Templates
 
-The module includes a comprehensive test suite that validates all functionality:
+### Development Machine Template
+
+```json
+{
+  "name": "Development Machine",
+  "version": "1.0.0",
+  "description": "Complete development environment setup",
+  "items": [
+    {
+      "name": "Essential Development Tools",
+      "type": "SystemTools",
+      "properties": {
+        "category": "Development",
+        "tools": ["git", "vscode", "powershell", "windows-terminal", "docker-desktop"]
+      }
+    },
+    {
+      "name": "WSL Ubuntu Development",
+      "type": "WSLConfiguration",
+      "properties": {
+        "distribution": "Ubuntu-22.04",
+        "packages": ["build-essential", "nodejs", "python3", "docker.io"]
+      }
+    }
+  ]
+}
+```
+
+### Enterprise Baseline Template
+
+```json
+{
+  "name": "Enterprise Security Baseline",
+  "version": "1.0.0",
+  "description": "Corporate security and compliance configuration",
+  "items": [
+    {
+      "name": "Security Features",
+      "type": "WindowsFeatures",
+      "properties": {
+        "features": ["Windows-Defender", "BitLocker", "Hyper-V"]
+      }
+    },
+    {
+      "name": "Telemetry Configuration",
+      "type": "TelemetrySettings",
+      "properties": {
+        "level": "Security",
+        "disableOptional": true
+      }
+    }
+  ]
+}
+```
+
+## 🛠️ Advanced Configuration
+
+### Plugin Development
+
+DotWin supports custom plugins for extending functionality:
 
 ```powershell
-# Run the complete test suite
-.\Test-Module.ps1
+# Example plugin structure
+class CustomPlugin : DotWinConfigurationItem {
+    [string]$PluginName = "CustomPlugin"
+    [string]$Version = "1.0.0"
 
-# The test suite includes:
-# - Module import and structure validation
-# - Core class functionality testing
-# - Hardware management function testing
-# - WSL configuration testing
-# - Package management testing
-# - Error handling validation
-# - Performance testing
-# - Integration testing
+    [bool] Test() {
+        # Implementation logic
+        return $true
+    }
+
+    [void] Apply() {
+        # Implementation logic
+    }
+}
+
+# Register plugin
+Register-DotWinPlugin -Plugin $CustomPlugin -Category "Custom"
 ```
 
-Test categories:
+### Cloud Configuration Sync
 
-- **Core**: Basic module functionality and classes
-- **Hardware**: Hardware detection and driver management
-- **WSL**: Windows Subsystem for Linux features
-- **Tools**: System tools installation
-- **Packages**: Package and application management
-- **Configuration**: System configuration functions
-- **Performance**: Performance and timing validation
-- **Integration**: End-to-end workflow testing
+```powershell
+# Export configuration for cloud sync
+Export-DotWinConfiguration -Path ".\config.json" -IncludeProfile -CloudSync
 
-## Contributing
+# Import configuration from cloud
+Import-DotWinConfiguration -Path "https://config.company.com/baseline.json" -Validate
+```
 
-This project has completed its Phase 3 development with comprehensive advanced features. The module is now production-ready with:
+## 📊 System Metrics & Monitoring
 
-- Complete hardware management capabilities
-- Full WSL integration and management
-- Comprehensive system tools installation
-- Extensive testing framework
-- Complete documentation
+DotWin provides comprehensive system metrics:
 
-Future contributions can focus on:
+- **Performance Score**: Overall system performance rating (0-100)
+- **Optimization Potential**: Available improvement opportunities (0-100)
+- **Security Score**: Security posture assessment (0-100)
+- **Developer Friendliness**: Development environment quality (0-100)
+- **System Complexity**: Configuration complexity measurement
 
-- Additional hardware vendor support
-- More WSL distribution configurations
-- Enhanced GUI management interface
-- Cloud synchronization features
-- Enterprise deployment tools
+```powershell
+# View detailed metrics
+$profile = Get-DotWinSystemProfile
+$metrics = $profile.SystemMetrics
 
-## License
+Write-Host "System Performance Metrics:" -ForegroundColor Yellow
+Write-Host "Performance Score: $($metrics.PerformanceScore)/100" -ForegroundColor Green
+Write-Host "Security Score: $($metrics.SecurityScore)/100" -ForegroundColor Blue
+Write-Host "Optimization Potential: $($metrics.OptimizationPotential)%" -ForegroundColor Cyan
+```
 
-All rights reserved.
+## 🔍 Troubleshooting Guide
 
-## Authors
+### Common Issues
 
-- Shon Thomas (albedosehen)
+#### Issue: Module Import Fails
 
-## Version History
+```powershell
+# Solution: Check execution policy
+Get-ExecutionPolicy
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
 
-- **1.0.0** - Foundational framework implementation
-  - Core classes and module structure
-  - Public API functions
-  - Basic testing and validation
-  - System status reporting
+#### Issue: Hardware Detection Incomplete
 
-- **1.1.0** - Core functionality implementation
-  - Package management system
-  - Application installation framework
-  - Windows feature management
-  - System configuration capabilities
-  - Profile management
+```powershell
+# Solution: Run as administrator and force re-profiling
+Get-DotWinSystemProfile -Force -IncludeHardware
+```
 
-- **1.2.0** - Advanced features implementation (Phase 3)
-  - **Hardware Management**: Complete chipset and driver management
-  - **WSL Integration**: Comprehensive Linux subsystem support
-  - **System Tools**: Automated utility installation
-  - **Testing Framework**: Comprehensive validation suite
-  - **Documentation**: Complete user and developer guides
+#### Issue: Recommendations Not Generated
 
-## Acknowledgments
+```powershell
+# Solution: Verify system profile completeness
+$profile = Get-DotWinSystemProfile
+if (-not $profile.LastProfiled) {
+    Write-Host "Profile incomplete, re-running..." -ForegroundColor Yellow
+    $profile = Get-DotWinSystemProfile -Force
+}
+```
+
+### Debug Mode
+
+Enable verbose logging for troubleshooting:
+
+```powershell
+# Enable detailed logging
+$VerbosePreference = "Continue"
+Get-DotWinSystemProfile -Verbose
+Get-DotWinRecommendations -Verbose
+```
+
+### Performance Optimization
+
+For large environments or slow systems:
+
+```powershell
+# Use parallel processing (PowerShell 7+)
+Get-DotWinSystemProfile -UseParallel
+
+# Selective profiling for faster execution
+Get-DotWinSystemProfile -IncludeHardware -IncludeSoftware:$false
+```
+
+## 🤝 Contributing
+
+We welcome contributions to DotWin! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
+### Development Setup
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run the test suite: `.\tests\Test-DotWinProfiling.ps1`
+5. Submit a pull request
+
+### Plugin Development
+
+See our [Plugin Development Guide](docs/PluginDevelopment.md) for creating custom extensions.
+
+## 📚 Documentation
+
+- [System Profiling Guide](docs/SystemProfiling.md)
+- [Plugin Development](docs/PluginDevelopment.md)
+- [Enterprise Deployment](docs/EnterpriseDeployment.md)
+- [API Reference](docs/APIReference.md)
+- [Configuration Templates](docs/ConfigurationTemplates.md)
+
+## 🔒 Security
+
+DotWin takes security seriously. Please see our [Security Policy](SECURITY.md) for reporting vulnerabilities.
+
+## 📄 License
+
+All rights reserved. See [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
 
 Inspired by:
 
@@ -581,38 +417,12 @@ Inspired by:
 - Ansible automation platform
 - Chocolatey package management
 
-## Support
+## 📞 Support
 
-For issues, questions, or contributions, please refer to the comprehensive test suite and documentation provided. The module includes extensive help documentation for all functions accessible via `Get-Help <FunctionName> -Full`.
+- **Documentation**: Comprehensive help available via `Get-Help <FunctionName> -Full`
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Enterprise Support**: Contact us for enterprise licensing and support
 
-## Quick Reference
+---
 
-### Essential Commands
-
-```powershell
-# System status and information
-Get-DotWinStatus -IncludeSystemInfo
-Get-ChipsetInformation -IncludeDrivers
-
-# Hardware and driver management
-Search-ChipsetDriver -DriverType All
-Install-ChipsetDriver -DriverType Chipset -Source WindowsUpdate
-
-# System tools and packages
-Install-SystemTools -ToolCategory Development
-Install-Packages
-Install-Applications
-
-# WSL management
-Test-WSLPrerequisites
-$WSLConfigurations.UbuntuDev.Apply()
-
-# Configuration management
-Test-DotWinConfiguration -Configuration $config
-Invoke-DotWinConfiguration -Configuration $config
-
-# Testing and validation
-.\Test-Module.ps1
-```
-
-DotWin is now a comprehensive, production-ready Windows 11 configuration management system with advanced hardware management, WSL integration, and extensive automation capabilities.
+**DotWin** - Intelligent Windows Configuration Management for the Modern Enterprise

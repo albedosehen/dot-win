@@ -1,0 +1,388 @@
+{
+  "name": "Enterprise Security Baseline",
+  "version": "1.0.0",
+  "description": "Corporate security and compliance configuration for enterprise environments",
+  "metadata": {
+    "author": "DotWin Enterprise Team",
+    "category": "Enterprise",
+    "targetAudience": "IT Administrators",
+    "lastUpdated": "2025-06-20",
+    "requiredPrivileges": "Administrator",
+    "estimatedTime": "10-20 minutes",
+    "complianceFrameworks": ["NIST", "CIS", "ISO 27001"]
+  },
+  "items": [
+    {
+      "name": "Windows Security Features",
+      "type": "WindowsFeatures",
+      "description": "Enable essential Windows security features",
+      "enabled": true,
+      "properties": {
+        "features": [
+          "Windows-Defender-ApplicationGuard",
+          "Windows-Defender",
+          "Microsoft-Windows-Subsystem-Linux",
+          "VirtualMachinePlatform"
+        ],
+        "disableFeatures": [
+          "TelnetClient",
+          "TFTP",
+          "SimpleTCP"
+        ]
+      }
+    },
+    {
+      "name": "Security Policy Configuration",
+      "type": "SecurityPolicy",
+      "description": "Configure Windows security policies according to enterprise standards",
+      "enabled": true,
+      "properties": {
+        "passwordPolicy": {
+          "minimumLength": 12,
+          "complexity": true,
+          "maxAge": 90,
+          "minAge": 1,
+          "historyCount": 12,
+          "lockoutThreshold": 5,
+          "lockoutDuration": 30
+        },
+        "auditPolicy": {
+          "logonEvents": "Success,Failure",
+          "accountLogon": "Success,Failure",
+          "objectAccess": "Failure",
+          "privilegeUse": "Failure",
+          "policyChange": "Success,Failure",
+          "systemEvents": "Success,Failure"
+        },
+        "userRights": {
+          "denyNetworkLogon": ["Guest"],
+          "denyInteractiveLogon": ["Guest"],
+          "denyRemoteDesktopLogon": ["Guest"]
+        }
+      }
+    },
+    {
+      "name": "Windows Defender Configuration",
+      "type": "DefenderConfiguration",
+      "description": "Configure Windows Defender with enterprise security settings",
+      "enabled": true,
+      "properties": {
+        "realTimeProtection": true,
+        "cloudProtection": true,
+        "automaticSampleSubmission": false,
+        "tamperProtection": true,
+        "controlledFolderAccess": true,
+        "networkProtection": "enabled",
+        "attackSurfaceReduction": {
+          "blockExecutableContent": true,
+          "blockOfficeApps": true,
+          "blockWin32APIFromMacro": true,
+          "blockObfuscatedScripts": true
+        },
+        "exclusions": {
+          "processes": [],
+          "paths": [
+            "C:\\Program Files\\Company Software"
+          ],
+          "extensions": [],
+          "files": []
+        }
+      }
+    },
+    {
+      "name": "BitLocker Drive Encryption",
+      "type": "BitLockerConfiguration",
+      "description": "Enable and configure BitLocker drive encryption",
+      "enabled": true,
+      "properties": {
+        "systemDrive": {
+          "enabled": true,
+          "encryptionMethod": "XtsAes256",
+          "recoveryKeyBackup": "ActiveDirectory",
+          "tpmRequired": true,
+          "pinRequired": false
+        },
+        "fixedDrives": {
+          "autoUnlock": true,
+          "encryptionMethod": "XtsAes256"
+        },
+        "removableDrives": {
+          "requirePassword": true,
+          "encryptionMethod": "Aes256"
+        }
+      }
+    },
+    {
+      "name": "Firewall Configuration",
+      "type": "FirewallConfiguration",
+      "description": "Configure Windows Firewall with enterprise security rules",
+      "enabled": true,
+      "properties": {
+        "profiles": {
+          "domain": {
+            "enabled": true,
+            "defaultInboundAction": "Block",
+            "defaultOutboundAction": "Allow",
+            "notifyOnBlock": false
+          },
+          "private": {
+            "enabled": true,
+            "defaultInboundAction": "Block",
+            "defaultOutboundAction": "Allow",
+            "notifyOnBlock": true
+          },
+          "public": {
+            "enabled": true,
+            "defaultInboundAction": "Block",
+            "defaultOutboundAction": "Allow",
+            "notifyOnBlock": true
+          }
+        },
+        "rules": [
+          {
+            "name": "Block Telnet",
+            "direction": "Outbound",
+            "action": "Block",
+            "port": "23",
+            "protocol": "TCP"
+          },
+          {
+            "name": "Allow Corporate VPN",
+            "direction": "Inbound",
+            "action": "Allow",
+            "remoteAddress": "10.0.0.0/8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Registry Security Settings",
+      "type": "RegistryConfiguration",
+      "description": "Apply security-focused registry modifications",
+      "enabled": true,
+      "properties": {
+        "settings": [
+          {
+            "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "name": "EnableLUA",
+            "value": 1,
+            "type": "DWORD",
+            "description": "Enable User Account Control"
+          },
+          {
+            "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+            "name": "ConsentPromptBehaviorAdmin",
+            "value": 2,
+            "type": "DWORD",
+            "description": "UAC prompt for administrators"
+          },
+          {
+            "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+            "name": "NoAutoUpdate",
+            "value": 0,
+            "type": "DWORD",
+            "description": "Enable automatic updates"
+          },
+          {
+            "path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+            "name": "AllowTelemetry",
+            "value": 1,
+            "type": "DWORD",
+            "description": "Set telemetry to Security level"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Application Control",
+      "type": "ApplicationControl",
+      "description": "Configure application execution policies",
+      "enabled": true,
+      "properties": {
+        "appLocker": {
+          "enabled": true,
+          "defaultRules": true,
+          "customRules": [
+            {
+              "type": "Path",
+              "action": "Allow",
+              "path": "C:\\Program Files\\*",
+              "description": "Allow execution from Program Files"
+            },
+            {
+              "type": "Path",
+              "action": "Allow",
+              "path": "C:\\Windows\\*",
+              "description": "Allow execution from Windows directory"
+            }
+          ]
+        },
+        "smartScreen": {
+          "enabled": true,
+          "level": "Warn",
+          "checkAppsAndFiles": true
+        }
+      }
+    },
+    {
+      "name": "Network Security",
+      "type": "NetworkSecurity",
+      "description": "Configure network security settings",
+      "enabled": true,
+      "properties": {
+        "smbSecurity": {
+          "smbv1": false,
+          "smbv2": true,
+          "smbv3": true,
+          "signing": "required"
+        },
+        "networkShares": {
+          "adminShares": false,
+          "nullSessionShares": false
+        },
+        "remoteAccess": {
+          "remoteDesktop": false,
+          "remoteAssistance": false,
+          "wmi": "restricted"
+        }
+      }
+    },
+    {
+      "name": "Event Logging Configuration",
+      "type": "EventLogging",
+      "description": "Configure comprehensive event logging for security monitoring",
+      "enabled": true,
+      "properties": {
+        "logSizes": {
+          "Security": "1024000",
+          "System": "512000",
+          "Application": "512000"
+        },
+        "retention": {
+          "Security": "OverwriteAsNeeded",
+          "System": "OverwriteAsNeeded",
+          "Application": "OverwriteAsNeeded"
+        },
+        "additionalLogs": [
+          "Microsoft-Windows-PowerShell/Operational",
+          "Microsoft-Windows-AppLocker/EXE and DLL",
+          "Microsoft-Windows-Windows Defender/Operational"
+        ]
+      }
+    },
+    {
+      "name": "Software Restriction",
+      "type": "SoftwareRestriction",
+      "description": "Restrict installation and execution of unauthorized software",
+      "enabled": true,
+      "properties": {
+        "blockedSoftware": [
+          "TeamViewer",
+          "AnyDesk",
+          "Chrome Remote Desktop",
+          "BitTorrent",
+          "uTorrent"
+        ],
+        "allowedSoftware": [
+          "Microsoft Office",
+          "Adobe Acrobat Reader",
+          "Google Chrome",
+          "Mozilla Firefox",
+          "7-Zip"
+        ],
+        "installationPolicy": "AdminOnly"
+      }
+    },
+    {
+      "name": "USB and Removable Media Control",
+      "type": "RemovableMediaControl",
+      "description": "Control access to USB and removable storage devices",
+      "enabled": true,
+      "properties": {
+        "usbStorage": {
+          "readAccess": "Allowed",
+          "writeAccess": "Denied",
+          "executeAccess": "Denied"
+        },
+        "cdDvd": {
+          "readAccess": "Allowed",
+          "writeAccess": "Denied"
+        },
+        "exceptions": [
+          {
+            "deviceId": "VID_0781&PID_5567",
+            "description": "Corporate USB drives",
+            "access": "Full"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Time Synchronization",
+      "type": "TimeSync",
+      "description": "Configure secure time synchronization",
+      "enabled": true,
+      "properties": {
+        "ntpServers": [
+          "time.company.com",
+          "pool.ntp.org"
+        ],
+        "syncInterval": 3600,
+        "requireAuthentication": true
+      }
+    }
+  ],
+  "prerequisites": [
+    "Windows 11 Pro/Enterprise or Windows 10 Pro/Enterprise",
+    "Domain-joined computer (recommended)",
+    "Administrator privileges",
+    "TPM 2.0 chip (for BitLocker)",
+    "Network connectivity to domain controllers"
+  ],
+  "postInstallInstructions": [
+    "Restart the computer to apply all security settings",
+    "Verify BitLocker encryption status",
+    "Test firewall rules and network connectivity",
+    "Review event logs for any configuration errors",
+    "Update Group Policy if domain-joined",
+    "Perform security compliance scan"
+  ],
+  "validation": {
+    "tests": [
+      {
+        "name": "Windows Defender Status",
+        "command": "Get-MpComputerStatus | Select-Object AntivirusEnabled, RealTimeProtectionEnabled",
+        "expectedOutput": "True"
+      },
+      {
+        "name": "BitLocker Status",
+        "command": "Get-BitLockerVolume -MountPoint C: | Select-Object ProtectionStatus",
+        "expectedOutput": "On"
+      },
+      {
+        "name": "Firewall Status",
+        "command": "Get-NetFirewallProfile | Select-Object Name, Enabled",
+        "expectedOutput": "True"
+      },
+      {
+        "name": "UAC Status",
+        "command": "Get-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name EnableLUA",
+        "expectedOutput": "1"
+      }
+    ]
+  },
+  "compliance": {
+    "frameworks": {
+      "NIST": {
+        "controls": ["AC-2", "AC-3", "AU-2", "AU-3", "CM-6", "IA-2", "SC-7"],
+        "description": "NIST Cybersecurity Framework controls"
+      },
+      "CIS": {
+        "controls": ["2.2.1", "2.3.1", "9.1.1", "9.2.1", "18.1.1"],
+        "description": "CIS Windows 11 Benchmark controls"
+      }
+    },
+    "reportingEndpoint": "https://compliance.company.com/api/reports",
+    "scheduleReports": "Weekly"
+  }
+}

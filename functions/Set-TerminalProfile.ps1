@@ -119,7 +119,7 @@ function Set-TerminalProfile {
                     Write-DotWinLog "Loading terminal configuration from file: $ConfigurationPath" -Level Information
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $terminalConfig = $configContent
-                    $Theme = $terminalConfig.theme ?? 'Dark'
+                    $Theme = if ($terminalConfig.theme) { $terminalConfig.theme } else { 'Dark' }
                 }
             }
 
@@ -331,7 +331,7 @@ class DotWinWindowsTerminal : DotWinConfigurationItem {
                     $settingsContent = Get-Content -Path $this.SettingsPath -Raw
                     $settings = $settingsContent | ConvertFrom-Json
                     
-                    $state.CurrentTheme = $settings.theme ?? "Unknown"
+                    $state.CurrentTheme = if ($settings.theme) { $settings.theme } else { "Unknown" }
                     $state.ProfileCount = if ($settings.profiles -and $settings.profiles.list) { $settings.profiles.list.Count } else { 0 }
                     $state.HasDotWinConfiguration = ($settingsContent -match "DotWin")
                     
@@ -808,7 +808,7 @@ function Get-WindowsTerminalStatus {
                     $settingsContent = Get-Content -Path $status.SettingsPath -Raw
                     $settings = $settingsContent | ConvertFrom-Json
                     
-                    $status.Theme = $settings.theme ?? "Unknown"
+                    $status.Theme = if ($settings.theme) { $settings.theme } else { "Unknown" }
                     $status.ProfileCount = if ($settings.profiles -and $settings.profiles.list) { $settings.profiles.list.Count } else { 0 }
                     $status.HasCustomConfiguration = ($settingsContent -match "DotWin")
                     

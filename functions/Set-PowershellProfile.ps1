@@ -120,7 +120,7 @@ function Set-PowershellProfile {
                     Write-DotWinLog "Loading profile configuration from file: $ConfigurationPath" -Level Information
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $profileConfig = $configContent
-                    $ProfileType = $profileConfig.ProfileType ?? 'CurrentUser'
+                    $ProfileType = if ($profileConfig.ProfileType) { $profileConfig.ProfileType } else { 'CurrentUser' }
                 }
             }
 

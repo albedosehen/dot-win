@@ -17,3 +17,9 @@
 !scripts/**
 !tests/
 !tests/**
+!docs/
+!docs/**
+!examples/
+!examples/**
+!plugins/
+!plugins/**

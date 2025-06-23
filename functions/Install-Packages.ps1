@@ -440,9 +440,9 @@ function ConvertTo-PackageConfiguration {
         $config.PackageId = $PackageSpec
     } elseif ($PackageSpec -is [hashtable] -or $PackageSpec -is [PSCustomObject]) {
         # Detailed package configuration
-        $config.PackageId = $PackageSpec.Id ?? $PackageSpec.PackageId ?? $PackageSpec.Name
+        $config.PackageId = if ($PackageSpec.Id) { $PackageSpec.Id } elseif ($PackageSpec.PackageId) { $PackageSpec.PackageId } else { $PackageSpec.Name }
         $config.Version = $PackageSpec.Version
-        $config.Source = $PackageSpec.Source ?? $Source
+        $config.Source = if ($PackageSpec.Source) { $PackageSpec.Source } else { $Source }
         
         if ($PackageSpec.AcceptLicense -ne $null) {
             $config.AcceptLicense = $PackageSpec.AcceptLicense

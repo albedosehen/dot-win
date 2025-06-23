@@ -1,0 +1,300 @@
+{
+  "name": "Developer Workstation",
+  "version": "1.2.0",
+  "description": "Complete development environment setup with modern tools and WSL integration",
+  "metadata": {
+    "author": "DotWin Team",
+    "category": "Development",
+    "targetAudience": "Software Developers",
+    "lastUpdated": "2025-06-20",
+    "requiredPrivileges": "Administrator",
+    "estimatedTime": "15-30 minutes"
+  },
+  "items": [
+    {
+      "name": "Essential Development Tools",
+      "type": "SystemTools",
+      "description": "Core development tools and utilities",
+      "enabled": true,
+      "properties": {
+        "category": "Development",
+        "source": "winget",
+        "tools": [
+          "git",
+          "vscode",
+          "powershell",
+          "windows-terminal",
+          "docker-desktop",
+          "nodejs",
+          "python3",
+          "golang",
+          "postman"
+        ],
+        "acceptLicenses": true
+      }
+    },
+    {
+      "name": "Development Package Managers",
+      "type": "PackageManagers",
+      "description": "Install and configure package managers for development",
+      "enabled": true,
+      "properties": {
+        "managers": [
+          {
+            "name": "chocolatey",
+            "autoInstall": true,
+            "features": ["allowGlobalConfirmation"]
+          },
+          {
+            "name": "scoop",
+            "autoInstall": true,
+            "buckets": ["extras", "versions"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "WSL Ubuntu Development Environment",
+      "type": "WSLConfiguration",
+      "description": "Ubuntu-based development environment with essential packages",
+      "enabled": true,
+      "properties": {
+        "distribution": "Ubuntu-22.04",
+        "defaultUser": "developer",
+        "settings": {
+          "memory": "8GB",
+          "processors": "4",
+          "swap": "2GB"
+        },
+        "packages": [
+          "build-essential",
+          "curl",
+          "wget",
+          "git",
+          "vim",
+          "nodejs",
+          "npm",
+          "python3",
+          "python3-pip",
+          "docker.io",
+          "docker-compose",
+          "kubectl",
+          "terraform",
+          "ansible"
+        ],
+        "postInstallCommands": [
+          "sudo usermod -aG docker $USER",
+          "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash",
+          "pip3 install --user pipenv poetry"
+        ]
+      }
+    },
+    {
+      "name": "Windows Development Features",
+      "type": "WindowsFeatures",
+      "description": "Enable Windows features useful for development",
+      "enabled": true,
+      "properties": {
+        "features": [
+          "Microsoft-Windows-Subsystem-Linux",
+          "VirtualMachinePlatform",
+          "Microsoft-Hyper-V-All",
+          "Containers",
+          "IIS-WebServerRole",
+          "IIS-HttpCompressionStatic",
+          "IIS-HttpCompressionDynamic"
+        ]
+      }
+    },
+    {
+      "name": "Development Environment Variables",
+      "type": "EnvironmentVariables",
+      "description": "Set up development-specific environment variables",
+      "enabled": true,
+      "properties": {
+        "variables": {
+          "DEVELOPER_MODE": "true",
+          "NODE_ENV": "development",
+          "PYTHONPATH": "%USERPROFILE%\\dev\\python",
+          "GOPATH": "%USERPROFILE%\\go",
+          "DOCKER_BUILDKIT": "1"
+        },
+        "pathAdditions": [
+          "%USERPROFILE%\\go\\bin",
+          "%USERPROFILE%\\.cargo\\bin",
+          "%USERPROFILE%\\AppData\\Local\\Programs\\Python\\Python311\\Scripts"
+        ]
+      }
+    },
+    {
+      "name": "Git Configuration",
+      "type": "GitConfiguration",
+      "description": "Configure Git with best practices for development",
+      "enabled": true,
+      "properties": {
+        "globalConfig": {
+          "core.autocrlf": "true",
+          "core.editor": "code --wait",
+          "init.defaultBranch": "main",
+          "pull.rebase": "false",
+          "push.default": "simple",
+          "credential.helper": "manager-core"
+        },
+        "aliases": {
+          "st": "status",
+          "co": "checkout",
+          "br": "branch",
+          "ci": "commit",
+          "unstage": "reset HEAD --",
+          "last": "log -1 HEAD",
+          "visual": "!gitk"
+        }
+      }
+    },
+    {
+      "name": "PowerShell Profile Configuration",
+      "type": "PowerShellProfile",
+      "description": "Enhanced PowerShell profile for development",
+      "enabled": true,
+      "properties": {
+        "profileType": "CurrentUser",
+        "modules": [
+          "posh-git",
+          "oh-my-posh",
+          "PSReadLine",
+          "PowerShellGet",
+          "PackageManagement"
+        ],
+        "customizations": {
+          "theme": "paradox",
+          "enableGitStatus": true,
+          "enableAutoCompletion": true,
+          "historySearch": true
+        }
+      }
+    },
+    {
+      "name": "Windows Terminal Configuration",
+      "type": "TerminalConfiguration",
+      "description": "Modern terminal configuration for development",
+      "enabled": true,
+      "properties": {
+        "defaultProfile": "PowerShell",
+        "theme": "dark",
+        "fontSize": 12,
+        "fontFace": "Cascadia Code PL",
+        "profiles": [
+          {
+            "name": "PowerShell 7",
+            "commandline": "pwsh.exe",
+            "colorScheme": "Campbell Powershell"
+          },
+          {
+            "name": "Ubuntu WSL",
+            "commandline": "wsl.exe -d Ubuntu-22.04",
+            "colorScheme": "Ubuntu"
+          },
+          {
+            "name": "Developer Command Prompt",
+            "commandline": "cmd.exe /k \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools\\VsDevCmd.bat\"",
+            "colorScheme": "Campbell"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Development Security Settings",
+      "type": "SecurityConfiguration",
+      "description": "Security settings optimized for development while maintaining safety",
+      "enabled": true,
+      "properties": {
+        "executionPolicy": "RemoteSigned",
+        "developerMode": true,
+        "windowsDefenderExclusions": [
+          "%USERPROFILE%\\dev",
+          "%USERPROFILE%\\source",
+          "%USERPROFILE%\\repos",
+          "C:\\tools"
+        ],
+        "firewallRules": [
+          {
+            "name": "Docker Desktop",
+            "direction": "Inbound",
+            "action": "Allow",
+            "program": "Docker Desktop"
+          },
+          {
+            "name": "Node.js Development Server",
+            "direction": "Inbound",
+            "action": "Allow",
+            "port": "3000-3999"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Performance Optimizations",
+      "type": "PerformanceSettings",
+      "description": "System optimizations for development workloads",
+      "enabled": true,
+      "properties": {
+        "powerPlan": "High Performance",
+        "visualEffects": "Performance",
+        "indexingExclusions": [
+          "%USERPROFILE%\\node_modules",
+          "%USERPROFILE%\\.git",
+          "%USERPROFILE%\\target",
+          "%USERPROFILE%\\build"
+        ],
+        "memorySettings": {
+          "pagingFile": "System managed",
+          "clearPageFileAtShutdown": false
+        }
+      }
+    }
+  ],
+  "prerequisites": [
+    "Windows 11 or Windows 10 version 1903+",
+    "Administrator privileges",
+    "Internet connection",
+    "At least 8GB RAM recommended",
+    "At least 50GB free disk space"
+  ],
+  "postInstallInstructions": [
+    "Restart your computer to complete WSL installation",
+    "Configure Git with your personal information: git config --global user.name 'Your Name'",
+    "Configure Git with your email: git config --global user.email 'your.email@example.com'",
+    "Install additional VS Code extensions as needed",
+    "Set up SSH keys for Git repositories",
+    "Configure Docker Desktop settings for your development needs"
+  ],
+  "validation": {
+    "tests": [
+      {
+        "name": "Git Installation",
+        "command": "git --version",
+        "expectedOutput": "git version"
+      },
+      {
+        "name": "Node.js Installation",
+        "command": "node --version",
+        "expectedOutput": "v"
+      },
+      {
+        "name": "Python Installation",
+        "command": "python --version",
+        "expectedOutput": "Python 3"
+      },
+      {
+        "name": "WSL Ubuntu",
+        "command": "wsl -l -v",
+        "expectedOutput": "Ubuntu-22.04"
+      },
+      {
+        "name": "Docker Desktop",
+        "command": "docker --version",
+        "expectedOutput": "Docker version"
+      }
+    ]
+  }
+}

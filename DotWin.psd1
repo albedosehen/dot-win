@@ -1,9 +1,7 @@
 ﻿<#
 	===========================================================================
-	 Created with: 	SAPIEN Technologies, Inc., PowerShell Studio 2025 v5.9.256
-	 Created on:   	6/9/2025 10:37 PM
-	 Created by:   	shonp
-	 Organization: 	
+	 Created on:   	6/9/2025
+	 Created by:   	Shon Thomas
 	 Filename:     	DotWin.psd1
 	 -------------------------------------------------------------------------
 	 Module Manifest
@@ -80,19 +78,29 @@
 	
 	# Functions to export from this module
 	FunctionsToExport = @(
-		'Invoke-DotWinConfiguration',
-		'Get-DotWinStatus',
-		'Install-Packages',
-		'Install-Applications',
-		'Install-SystemTools',
-		'Install-ChipsetDriver',
-		'Enable-Features',
-		'Disable-Telemetry',
-		'Remove-Bloatware',
-		'Set-PowershellProfile',
-		'Set-TerminalProfile',
-		'Get-ChipsetInformation',
-		'Search-ChipsetDriver'
+	    'Invoke-DotWinConfiguration',
+	    'Get-DotWinStatus',
+	    'Install-Packages',
+	    'Install-Applications',
+	    'Install-SystemTools',
+	    'Install-ChipsetDriver',
+	    'Enable-Features',
+	    'Disable-Telemetry',
+	    'Remove-Bloatware',
+	    'Set-PowershellProfile',
+	    'Set-TerminalProfile',
+	    'Get-ChipsetInformation',
+	    'Search-ChipsetDriver',
+	    'Get-DotWinSystemProfile',
+	    'Get-DotWinRecommendations',
+	    'Invoke-DotWinProfiledConfiguration',
+	    'Get-DotWinSystemHealth',
+	    'Test-DotWinConfiguration',
+	    'Register-DotWinPlugin',
+	    'Get-DotWinPlugin',
+	    'Unregister-DotWinPlugin',
+	    'Enable-DotWinPlugin',
+	    'Disable-DotWinPlugin'
 	)
 	
 	# Cmdlets to export from this module

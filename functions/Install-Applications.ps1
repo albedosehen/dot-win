@@ -669,10 +669,10 @@ function ConvertTo-ApplicationConfiguration {
         $config.Name = $ApplicationSpec
     } elseif ($ApplicationSpec -is [hashtable] -or $ApplicationSpec -is [PSCustomObject]) {
         # Detailed application configuration
-        $config.Name = $ApplicationSpec.Name ?? $ApplicationSpec.PackageId ?? $ApplicationSpec.Id
-        $config.PackageId = $ApplicationSpec.PackageId ?? $ApplicationSpec.Id ?? $ApplicationSpec.Name
+        $config.Name = if ($ApplicationSpec.Name) { $ApplicationSpec.Name } elseif ($ApplicationSpec.PackageId) { $ApplicationSpec.PackageId } else { $ApplicationSpec.Id }
+        $config.PackageId = if ($ApplicationSpec.PackageId) { $ApplicationSpec.PackageId } elseif ($ApplicationSpec.Id) { $ApplicationSpec.Id } else { $ApplicationSpec.Name }
         $config.Version = $ApplicationSpec.Version
-        $config.Source = $ApplicationSpec.Source ?? 'winget'
+        $config.Source = if ($ApplicationSpec.Source) { $ApplicationSpec.Source } else { 'winget' }
 
         if ($ApplicationSpec.AcceptLicense -ne $null) {
             $config.AcceptLicense = $ApplicationSpec.AcceptLicense

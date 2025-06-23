@@ -123,8 +123,8 @@ function Get-DotWinStatus {
                         
                         # Check Windows features and capabilities
                         try {
-                            $windowsFeatures = Get-WindowsOptionalFeature -Online -ErrorAction SilentlyContinue | 
-                                Where-Object { $_.State -eq 'Enabled' } | 
+                            $windowsFeatures = Get-WindowsOptionalFeature -Online -ErrorAction SilentlyContinue |
+                                Where-Object { $_.State -eq 'Enabled' } |
                                 Select-Object -ExpandProperty FeatureName -First 10
                             $systemInfo.EnabledWindowsFeatures = $windowsFeatures
                         } catch {
@@ -135,6 +135,18 @@ function Get-DotWinStatus {
                     $status.ConfigurationStatus.SystemInfo = $systemInfo
                 } catch {
                     Write-DotWinLog "Error gathering system information: $($_.Exception.Message)" -Level Warning
+                    $status.ConfigurationStatus.SystemInfoError = $_.Exception.Message
+                }
+            }
+
+            # Always attempt basic system info gathering for error detection when not including system info
+            if (-not $IncludeSystemInfo) {
+                try {
+                    if ($IsWindows -or $PSVersionTable.PSVersion.Major -le 5) {
+                        $null = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
+                    }
+                } catch {
+                    Write-DotWinLog "Error accessing basic system information: $($_.Exception.Message)" -Level Warning
                     $status.ConfigurationStatus.SystemInfoError = $_.Exception.Message
                 }
             }
@@ -180,30 +192,45 @@ function Get-DotWinStatus {
             }
 
             # Configuration compliance check
-            if ($IncludeCompliance -and $ConfigurationPath) {
-                Write-DotWinLog "Checking configuration compliance" -Level Information
-                
-                try {
-                    $complianceResults = Test-DotWinConfiguration -ConfigurationPath $ConfigurationPath
+            if ($ConfigurationPath) {
+                if ($IncludeCompliance) {
+                    Write-DotWinLog "Checking configuration compliance" -Level Information
                     
-                    $complianceStatus = @{
-                        TotalItems = $complianceResults.Count
-                        CompliantItems = ($complianceResults | Where-Object { $_.IsValid }).Count
-                        NonCompliantItems = ($complianceResults | Where-Object { -not $_.IsValid }).Count
-                        ErrorItems = ($complianceResults | Where-Object { $_.Severity -eq 'Error' }).Count
-                        LastChecked = Get-Date
-                        ConfigurationPath = $ConfigurationPath
-                        Results = $complianceResults
+                    try {
+                        $complianceResults = Test-DotWinConfiguration -ConfigurationPath $ConfigurationPath
+
+                        $complianceStatus = @{
+                            TotalItems = $complianceResults.TotalItems
+                            CompliantItems = $complianceResults.ValidItems
+                            NonCompliantItems = $complianceResults.InvalidItems
+                            ErrorItems = $complianceResults.InvalidItems  # Invalid items are considered errors
+                            LastChecked = Get-Date
+                            ConfigurationPath = $ConfigurationPath
+                            Results = $complianceResults
+                        }
+
+                        $status.ConfigurationStatus.Compliance = $complianceStatus
+                        $status.IsCompliant = ($complianceResults.OverallStatus -eq "Valid")
+
+                    } catch {
+                        Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level Error
+                        $status.ConfigurationStatus.ComplianceError = $_.Exception.Message
+                        $status.IsCompliant = $false
                     }
-                    
-                    $status.ConfigurationStatus.Compliance = $complianceStatus
-                    $status.IsCompliant = ($complianceStatus.NonCompliantItems -eq 0 -and $complianceStatus.ErrorItems -eq 0)
-                    
-                } catch {
-                    Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level Error
-                    $status.ConfigurationStatus.ComplianceError = $_.Exception.Message
-                    $status.IsCompliant = $false
+                } else {
+                    # Always attempt basic compliance check for error detection when path is provided
+                    try {
+                        $complianceResults = Test-DotWinConfiguration -ConfigurationPath $ConfigurationPath
+                        $status.IsCompliant = ($complianceResults.OverallStatus -eq "Valid")
+                    } catch {
+                        Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level Error
+                        $status.ConfigurationStatus.ComplianceError = $_.Exception.Message
+                        $status.IsCompliant = $false
+                    }
                 }
+            } else {
+                # Set default compliance status when no configuration path is provided
+                $status.IsCompliant = $true
             }
 
             # Environment validation

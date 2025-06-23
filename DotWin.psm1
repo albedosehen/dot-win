@@ -15,8 +15,23 @@
 
 #Requires -Version 5.1
 
-# Import configuration classes
-. $PSScriptRoot\Classes.ps1
+# Import configuration classes using multiple approaches to ensure availability across all contexts
+try {
+    # Method 1: Load in global scope
+    $global:ExecutionContext.InvokeCommand.InvokeScript($false, [scriptblock]::Create(". '$PSScriptRoot\Classes.ps1'"), $null, $null)
+
+    # Method 2: Also load in current module scope
+    . "$PSScriptRoot\Classes.ps1"
+
+    # Method 3: Force load using Add-Type equivalent for PowerShell classes
+    $classContent = Get-Content "$PSScriptRoot\Classes.ps1" -Raw
+    Invoke-Expression $classContent
+
+    Write-Verbose "DotWin classes loaded successfully using multiple methods"
+} catch {
+    Write-Error "Failed to load DotWin classes: $($_.Exception.Message)"
+    throw
+}
 
 # Module variables
 $script:DotWinModuleRoot = $PSScriptRoot
@@ -47,7 +62,17 @@ $PublicFunctions = @(
     'Set-PowershellProfile',
     'Set-TerminalProfile',
     'Get-ChipsetInformation',
-    'Search-ChipsetDriver'
+    'Search-ChipsetDriver',
+    'Get-DotWinSystemProfile',
+    'Get-DotWinRecommendations',
+    'Invoke-DotWinProfiledConfiguration',
+    'Get-DotWinSystemHealth',
+    'Test-DotWinConfiguration',
+    'Register-DotWinPlugin',
+    'Get-DotWinPlugin',
+    'Unregister-DotWinPlugin',
+    'Enable-DotWinPlugin',
+    'Disable-DotWinPlugin'
 )
 
 foreach ($Function in $PublicFunctions) {
@@ -62,25 +87,19 @@ foreach ($Function in $PublicFunctions) {
 
 # Internal helper functions
 function Write-DotWinLog {
-    <#
-    .SYNOPSIS
-        Internal logging function for DotWin module.
-
-    .PARAMETER Message
-        The message to log.
-
-    .PARAMETER Level
-        The log level (Information, Warning, Error, Verbose).
-    #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$Message,
+        [Parameter(Mandatory = $false)]
+        [string]$Message = "",
 
         [Parameter()]
         [ValidateSet('Information', 'Warning', 'Error', 'Verbose')]
         [string]$Level = 'Information'
     )
+
+    if (-not $PSBoundParameters.ContainsKey('Message') -or [string]::IsNullOrWhiteSpace($Message)) {
+        return  # Just do nothing if Message is missing or empty
+    }
 
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
@@ -92,7 +111,6 @@ function Write-DotWinLog {
         'Verbose' { Write-Verbose $logMessage }
     }
 
-    # Write to log file if path is configured
     if ($script:DotWinLogPath -and (Test-Path (Split-Path $script:DotWinLogPath -Parent))) {
         Add-Content -Path $script:DotWinLogPath -Value $logMessage
     }
