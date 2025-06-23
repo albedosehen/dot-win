@@ -205,139 +205,6 @@ function Set-PowershellProfile {
     }
 }
 
-# PowerShell Profile configuration item class
-class DotWinPowerShellProfile : DotWinConfigurationItem {
-    [string]$ProfilePath
-    [hashtable]$Configuration
-    [bool]$BackupExisting
-
-    DotWinPowerShellProfile() : base() {
-        $this.Type = "PowerShellProfile"
-        $this.Configuration = @{}
-        $this.BackupExisting = $true
-    }
-
-    DotWinPowerShellProfile([string]$ProfileType) : base($ProfileType, "PowerShellProfile") {
-        $this.Configuration = @{}
-        $this.BackupExisting = $true
-    }
-
-    [bool] Test() {
-        try {
-            Write-DotWinLog "Testing PowerShell profile configuration: $($this.Name)" -Level Verbose
-            
-            # Check if profile exists
-            if (-not (Test-Path $this.ProfilePath)) {
-                Write-DotWinLog "PowerShell profile does not exist: $($this.ProfilePath)" -Level Verbose
-                return $false
-            }
-            
-            # Check if profile contains expected content
-            $profileContent = Get-Content -Path $this.ProfilePath -Raw -ErrorAction SilentlyContinue
-            if (-not $profileContent) {
-                return $false
-            }
-            
-            # Check for DotWin configuration marker
-            if ($profileContent -notmatch "# DotWin PowerShell Profile Configuration") {
-                Write-DotWinLog "PowerShell profile missing DotWin configuration marker" -Level Verbose
-                return $false
-            }
-            
-            # Check if modules are configured
-            if ($this.Configuration.Modules) {
-                foreach ($module in $this.Configuration.Modules) {
-                    if ($profileContent -notmatch "Import-Module.*$($module.Name)") {
-                        Write-DotWinLog "PowerShell profile missing module import: $($module.Name)" -Level Verbose
-                        return $false
-                    }
-                }
-            }
-            
-            return $true
-            
-        } catch {
-            Write-DotWinLog "Error testing PowerShell profile '$($this.Name)': $($_.Exception.Message)" -Level Error
-            return $false
-        }
-    }
-
-    [void] Apply() {
-        try {
-            Write-DotWinLog "Configuring PowerShell profile: $($this.Name)" -Level Information
-            
-            # Create backup if requested and profile exists
-            if ($this.BackupExisting -and (Test-Path $this.ProfilePath)) {
-                $backupPath = "$($this.ProfilePath).backup.$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-                Copy-Item -Path $this.ProfilePath -Destination $backupPath -Force
-                Write-DotWinLog "Created profile backup: $backupPath" -Level Information
-            }
-            
-            # Ensure profile directory exists
-            $profileDir = Split-Path $this.ProfilePath -Parent
-            if (-not (Test-Path $profileDir)) {
-                New-Item -Path $profileDir -ItemType Directory -Force | Out-Null
-                Write-DotWinLog "Created profile directory: $profileDir" -Level Verbose
-            }
-            
-            # Generate profile content
-            $profileContent = Generate-PowerShellProfileContent -Configuration $this.Configuration
-            
-            # Write profile content
-            Set-Content -Path $this.ProfilePath -Value $profileContent -Encoding UTF8 -Force
-            Write-DotWinLog "PowerShell profile written to: $($this.ProfilePath)" -Level Information
-            
-            # Install required modules
-            if ($this.Configuration.Modules) {
-                Install-PowerShellProfileModules -Modules $this.Configuration.Modules
-            }
-            
-        } catch {
-            Write-DotWinLog "Error configuring PowerShell profile '$($this.Name)': $($_.Exception.Message)" -Level Error
-            throw
-        }
-    }
-
-    [hashtable] GetCurrentState() {
-        try {
-            $state = @{
-                ProfileType = $this.Name
-                ProfilePath = $this.ProfilePath
-                Exists = Test-Path $this.ProfilePath
-                Size = 0
-                LastModified = $null
-                Modules = @()
-                HasDotWinConfiguration = $false
-            }
-            
-            if ($state.Exists) {
-                $profileInfo = Get-Item $this.ProfilePath
-                $state.Size = $profileInfo.Length
-                $state.LastModified = $profileInfo.LastWriteTime
-                
-                $profileContent = Get-Content -Path $this.ProfilePath -Raw -ErrorAction SilentlyContinue
-                if ($profileContent) {
-                    $state.HasDotWinConfiguration = ($profileContent -match "# DotWin PowerShell Profile Configuration")
-                    
-                    # Extract imported modules
-                    $moduleMatches = [regex]::Matches($profileContent, "Import-Module\s+([^\s\r\n]+)")
-                    foreach ($match in $moduleMatches) {
-                        $state.Modules += $match.Groups[1].Value
-                    }
-                }
-            }
-            
-            return $state
-            
-        } catch {
-            return @{
-                ProfileType = $this.Name
-                ProfilePath = $this.ProfilePath
-                Error = $_.Exception.Message
-            }
-        }
-    }
-}
 
 function Get-PowerShellProfilePath {
     <#
@@ -450,10 +317,10 @@ function prompt {
     return $config
 }
 
-function Generate-PowerShellProfileContent {
+function New-PowerShellProfileContent {
     <#
     .SYNOPSIS
-        Generates PowerShell profile content from configuration.
+        Creates a new PowerShell profile content from configuration.
     #>
     [CmdletBinding()]
     param(
