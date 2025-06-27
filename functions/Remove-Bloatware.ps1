@@ -87,21 +87,33 @@ function Remove-Bloatware {
     )
 
     begin {
-        Write-DotWinLog "Starting bloatware removal process" -Level Information
+        # Start master progress bar for bloatware removal process
+        $masterProgressId = Start-DotWinProgress -Activity "Removing Bloatware" -Status "Initializing..." -TotalOperations 4
         
-        # Validate environment
-        $envTest = Test-DotWinEnvironment
-        if (-not $envTest.IsValid) {
-            throw "Environment validation failed: $($envTest.Issues -join ', ')"
-        }
+        try {
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Validating environment..." -PercentComplete 10
 
-        # Check for administrator privileges
-        if (-not $envTest.IsAdministrator) {
-            Write-DotWinLog "Administrator privileges recommended for complete bloatware removal" -Level Warning
-        }
+            # Validate environment
+            $envTest = Test-DotWinEnvironment
+            if (-not $envTest.IsValid) {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Environment validation failed: $($envTest.Issues -join ', ')"
+                throw "Environment validation failed: $($envTest.Issues -join ', ')"
+            }
 
-        $results = @()
-        $startTime = Get-Date
+            # Check for administrator privileges
+            if (-not $envTest.IsAdministrator) {
+                Write-DotWinLog "Administrator privileges recommended for complete bloatware removal" -Level Warning -ShowWithProgress
+            }
+
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Environment validated successfully" -PercentComplete 20
+            $results = @()
+            $startTime = Get-Date
+        } catch {
+            if ($masterProgressId) {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Initialization failed: $($_.Exception.Message)"
+            }
+            throw
+        }
     }
 
     process {
@@ -109,41 +121,55 @@ function Remove-Bloatware {
             # Determine applications to remove based on parameter set
             $applicationsToRemove = @()
 
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Determining applications to remove..." -PercentComplete 30
+
             switch ($PSCmdlet.ParameterSetName) {
                 'Category' {
-                    Write-DotWinLog "Loading bloatware from category: $Category" -Level Information
+                    Write-DotWinLog "Loading bloatware from category: $Category" -Level Information -ShowWithProgress
                     $applicationsToRemove = Get-BloatwareByCategory -Category $Category
-                    Write-DotWinLog "Found $($applicationsToRemove.Count) applications in category '$Category'" -Level Information
+                    Write-DotWinLog "Found $($applicationsToRemove.Count) applications in category '$Category'" -Level Information -ShowWithProgress
                 }
                 
                 'ApplicationList' {
                     $applicationsToRemove = $ApplicationList
-                    Write-DotWinLog "Processing $($ApplicationList.Count) applications from list" -Level Information
+                    Write-DotWinLog "Processing $($ApplicationList.Count) applications from list" -Level Information -ShowWithProgress
                 }
                 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading bloatware from configuration file: $ConfigurationPath" -Level Information
+                    Write-DotWinLog "Loading bloatware from configuration file: $ConfigurationPath" -Level Information -ShowWithProgress
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $applicationsToRemove = $configContent.bloatware
                 }
             }
 
             if ($applicationsToRemove.Count -eq 0) {
-                Write-DotWinLog "No bloatware applications to remove" -Level Warning
+                Write-DotWinLog "No bloatware applications to remove" -Level Warning -ShowWithProgress
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed (no bloatware)" -Message "No bloatware applications to remove"
                 return $results
             }
 
-            Write-DotWinLog "Removing $($applicationsToRemove.Count) bloatware applications" -Level Information
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Processing $($applicationsToRemove.Count) bloatware applications" -PercentComplete 40 -TotalOperations $applicationsToRemove.Count
 
-            # Process each application
+            # Process each application with nested progress
+            $appIndex = 0
             foreach ($appName in $applicationsToRemove) {
+                $appIndex++
+                $appProgressPercent = [Math]::Round((($appIndex / $applicationsToRemove.Count) * 50) + 40, 0)
+
+                # Create nested progress for individual application removal
+                $appProgressId = Start-DotWinProgress -Activity "Removing: $appName" -Status "Initializing..." -ParentId $masterProgressId
+
+                # Update master progress
+                Write-DotWinProgress -ProgressId $masterProgressId -Status "Removing application $appIndex of $($applicationsToRemove.Count): $appName" -PercentComplete $appProgressPercent -CurrentOperation $appIndex
+
                 $appStartTime = Get-Date
                 $result = [DotWinExecutionResult]::new()
                 $result.ItemName = $appName
                 $result.ItemType = "BloatwareRemoval"
+                $result.ProgressId = $appProgressId
                 
                 try {
-                    Write-DotWinLog "Processing bloatware application: $appName" -Level Information
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Creating removal configuration..." -PercentComplete 20
                     
                     # Create bloatware removal configuration item
                     $removalItem = [DotWinBloatwareRemoval]::new($appName)
@@ -151,18 +177,21 @@ function Remove-Bloatware {
                     $removalItem.IncludeScheduledTasks = $IncludeScheduledTasks
                     $removalItem.PreserveUserData = $PreserveUserData
                     
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Testing if removal is needed..." -PercentComplete 40
+
                     # Test if application exists and needs removal
                     $needsRemoval = $removalItem.Test()
                     if (-not $needsRemoval -and -not $Force) {
                         $result.Success = $true
                         $result.Message = "Application not found or already removed"
-                        Write-DotWinLog "Application '$appName' not found or already removed" -Level Information
+                        Write-DotWinProgress -ProgressId $appProgressId -Status "Already removed, skipping..." -PercentComplete 100
+                        Complete-DotWinProgress -ProgressId $appProgressId -Status "Skipped (already removed)" -Message "Application '$appName' not found or already removed"
                         continue
                     }
                     
                     # Remove the application
                     if ($PSCmdlet.ShouldProcess($appName, "Remove bloatware application")) {
-                        Write-DotWinLog "Removing bloatware application: $appName" -Level Information
+                        Write-DotWinProgress -ProgressId $appProgressId -Status "Removing application..." -PercentComplete 60
                         
                         # Get current state for comparison
                         $beforeState = $removalItem.GetCurrentState()
@@ -179,17 +208,20 @@ function Remove-Bloatware {
                         
                         $result.Success = $true
                         $result.Message = "Bloatware application removed successfully"
-                        Write-DotWinLog "Successfully removed bloatware application: $appName" -Level Information
+                        Write-DotWinProgress -ProgressId $appProgressId -Status "Removal completed successfully" -PercentComplete 100
+                        Complete-DotWinProgress -ProgressId $appProgressId -Status "Completed successfully" -Message "Successfully removed bloatware application: $appName"
                     } else {
                         $result.Success = $true
                         $result.Message = "Bloatware removal skipped (WhatIf)"
-                        Write-DotWinLog "Bloatware removal skipped: $appName (WhatIf)" -Level Information
+                        Write-DotWinProgress -ProgressId $appProgressId -Status "Skipped (WhatIf mode)" -PercentComplete 100
+                        Complete-DotWinProgress -ProgressId $appProgressId -Status "Skipped (WhatIf)" -Message "Bloatware removal skipped: $appName (WhatIf)"
                     }
                     
                 } catch {
                     $result.Success = $false
                     $result.Message = "Error removing bloatware application: $($_.Exception.Message)"
-                    Write-DotWinLog "Error removing bloatware application '$appName': $($_.Exception.Message)" -Level Error
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Failed" -PercentComplete 100
+                    Complete-DotWinProgress -ProgressId $appProgressId -Status "Failed" -Message "Error removing bloatware application '$appName': $($_.Exception.Message)"
                 } finally {
                     $result.Duration = (Get-Date) - $appStartTime
                     $results += $result
@@ -197,7 +229,7 @@ function Remove-Bloatware {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during bloatware removal: $($_.Exception.Message)" -Level Error
+            Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Critical error during bloatware removal: $($_.Exception.Message)"
             throw
         }
     }
@@ -207,12 +239,44 @@ function Remove-Bloatware {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
         
-        Write-DotWinLog "Bloatware removal completed" -Level Information
-        Write-DotWinLog "Total applications processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        # Calculate detailed removal metrics
+        $removedApps = ($results | Where-Object { $_.Success -and $_.Message -notlike "*already removed*" -and $_.Message -notlike "*skipped*" }).Count
+        $alreadyRemoved = ($results | Where-Object { $_.Message -like "*already removed*" }).Count
+        $servicesIncluded = if ($IncludeServices) { ($results | Where-Object { $_.Changes.Before.Services }).Count } else { 0 }
+        $tasksIncluded = if ($IncludeScheduledTasks) { ($results | Where-Object { $_.Changes.Before.ScheduledTasks }).Count } else { 0 }
+
+        # Complete master progress with summary statistics
+        $summaryMetrics = @{
+            TotalApplications = $results.Count
+            SuccessfulRemovals = $successCount
+            FailedRemovals = $failureCount
+            ActuallyRemoved = $removedApps
+            AlreadyRemoved = $alreadyRemoved
+            TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
+            AverageRemovalDuration = if ($results.Count -gt 0) { [Math]::Round(($results | Measure-Object -Property Duration -Average).Average.TotalSeconds, 2) } else { 0 }
+            ServicesProcessed = $servicesIncluded
+            ScheduledTasksProcessed = $tasksIncluded
+            Category = $Category
+        }
+
+        $summaryMessage = "Bloatware removal completed: $successCount successful, $failureCount failed (Total: $($results.Count) applications, Actually removed: $removedApps, Duration: $($summaryMetrics.TotalDurationSeconds)s)"
+
+        Write-DotWinProgress -ProgressId $masterProgressId -Status "Finalizing..." -PercentComplete 95
+        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
+
+        # Show summary with progress coordination
+        Write-DotWinLog "Bloatware removal completed" -Level Information -ShowWithProgress
+        Write-DotWinLog "Total applications processed: $($results.Count)" -Level Information -ShowWithProgress
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information -ShowWithProgress
+        Write-DotWinLog "Actually removed: $removedApps, Already removed: $alreadyRemoved" -Level Information -ShowWithProgress
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information -ShowWithProgress
         
-        return $results
+        # Ensure we always return an array, even for single items
+        if ($results -is [array]) {
+            return $results
+        } else {
+            return @($results)
+        }
     }
 }
 

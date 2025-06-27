@@ -96,24 +96,39 @@ function Install-Applications {
     )
 
     begin {
-        Write-DotWinLog "Starting application installation process" -Level Information
+        # Start master progress bar for application installation process
+        $masterProgressId = Start-DotWinProgress -Activity "Installing Applications" -Status "Initializing..." -TotalOperations 4
 
-        # Validate environment
-        $envTest = Test-DotWinEnvironment
-        if (-not $envTest.IsValid) {
-            throw "Environment validation failed: $($envTest.Issues -join ', ')"
+        try {
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Validating environment..." -PercentComplete 10
+
+            # Validate environment
+            $envTest = Test-DotWinEnvironment
+            if (-not $envTest.IsValid) {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Environment validation failed: $($envTest.Issues -join ', ')"
+                throw "Environment validation failed: $($envTest.Issues -join ', ')"
+            }
+
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Loading required modules..." -PercentComplete 20
+
+            # Import required modules/scripts
+            $wingetPath = Join-Path $script:DotWinAppsPath "Winget.ps1"
+            if (Test-Path $wingetPath) {
+                . $wingetPath
+            } else {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Winget wrapper not found at: $wingetPath"
+                throw "Winget wrapper not found at: $wingetPath"
+            }
+
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Environment validated successfully" -PercentComplete 30
+            $results = @()
+            $startTime = Get-Date
+        } catch {
+            if ($masterProgressId) {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Initialization failed: $($_.Exception.Message)"
+            }
+            throw
         }
-
-        # Import required modules/scripts
-        $wingetPath = Join-Path $script:DotWinAppsPath "Winget.ps1"
-        if (Test-Path $wingetPath) {
-            . $wingetPath
-        } else {
-            throw "Winget wrapper not found at: $wingetPath"
-        }
-
-        $results = @()
-        $startTime = Get-Date
     }
 
     process {
@@ -121,52 +136,69 @@ function Install-Applications {
             # Determine applications to install based on parameter set
             $applicationsToInstall = @()
 
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Determining applications to install..." -PercentComplete 40
+
             switch ($PSCmdlet.ParameterSetName) {
                 'ApplicationList' {
                     $applicationsToInstall = $ApplicationList
-                    Write-DotWinLog "Processing $($ApplicationList.Count) applications from list" -Level Information
+                    Write-DotWinLog "Processing $($ApplicationList.Count) applications from list" -Level Information -ShowWithProgress
                 }
 
                 'Category' {
-                    Write-DotWinLog "Loading applications from category: $Category" -Level Information
+                    Write-DotWinLog "Loading applications from category: $Category" -Level Information -ShowWithProgress
                     $packagesConfigPath = Join-Path $script:DotWinConfigPath "Packages.ps1"
 
                     if (Test-Path $packagesConfigPath) {
                         . $packagesConfigPath
                         $applicationsToInstall = Get-ApplicationsByCategory -Category $Category
-                        Write-DotWinLog "Found $($applicationsToInstall.Count) applications in category '$Category'" -Level Information
+                        Write-DotWinLog "Found $($applicationsToInstall.Count) applications in category '$Category'" -Level Information -ShowWithProgress
                     } else {
+                        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Packages configuration file not found: $packagesConfigPath"
                         throw "Packages configuration file not found: $packagesConfigPath"
                     }
                 }
 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading applications from configuration file: $ConfigurationPath" -Level Information
+                    Write-DotWinLog "Loading applications from configuration file: $ConfigurationPath" -Level Information -ShowWithProgress
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $applicationsToInstall = $configContent.applications
                 }
             }
 
             if ($applicationsToInstall.Count -eq 0) {
-                Write-DotWinLog "No applications to install" -Level Warning
+                Write-DotWinLog "No applications to install" -Level Warning -ShowWithProgress
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed (no applications)" -Message "No applications to install"
                 return $results
             }
 
-            Write-DotWinLog "Installing $($applicationsToInstall.Count) applications" -Level Information
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Processing $($applicationsToInstall.Count) applications" -PercentComplete 50 -TotalOperations $applicationsToInstall.Count
 
-            # Process each application
+            # Process each application with nested progress
+            $appIndex = 0
             foreach ($appSpec in $applicationsToInstall) {
+                $appIndex++
+                $appProgressPercent = [Math]::Round((($appIndex / $applicationsToInstall.Count) * 40) + 50, 0)
+
+                # Create nested progress for individual application
+                $appProgressId = Start-DotWinProgress -Activity "Installing: $($appSpec.Name -or $appSpec)" -Status "Initializing..." -ParentId $masterProgressId
+
+                # Update master progress
+                Write-DotWinProgress -ProgressId $masterProgressId -Status "Installing application $appIndex of $($applicationsToInstall.Count): $($appSpec.Name -or $appSpec)" -PercentComplete $appProgressPercent -CurrentOperation $appIndex
+
                 $appStartTime = Get-Date
                 $result = [DotWinExecutionResult]::new()
 
                 try {
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Parsing application configuration..." -PercentComplete 10
+
                     # Parse application specification
                     $appConfig = ConvertTo-ApplicationConfiguration -ApplicationSpec $appSpec -AcceptLicenses:$AcceptLicenses
 
                     $result.ItemName = $appConfig.Name
                     $result.ItemType = "Application"
+                    $result.ProgressId = $appProgressId
 
-                    Write-DotWinLog "Processing application: $($appConfig.Name)" -Level Information
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Installing package..." -PercentComplete 30
 
                     # Step 1: Install the base package
                     $packageResult = Install-ApplicationPackage -ApplicationConfig $appConfig -Force:$Force
@@ -181,36 +213,38 @@ function Install-Applications {
 
                     # Step 2: Apply post-installation configuration
                     if ($IncludeConfiguration -and $appConfig.Configuration) {
-                        Write-DotWinLog "Applying configuration for application: $($appConfig.Name)" -Level Information
+                        Write-DotWinProgress -ProgressId $appProgressId -Status "Applying configuration..." -PercentComplete 60
 
                         $configResult = Set-ApplicationConfiguration -ApplicationConfig $appConfig
                         $result.Changes.Configuration = $configResult.Changes
 
                         if (-not $configResult.Success) {
-                            Write-DotWinLog "Warning: Configuration failed for '$($appConfig.Name)': $($configResult.Message)" -Level Warning
+                            Write-DotWinLog "Warning: Configuration failed for '$($appConfig.Name)': $($configResult.Message)" -Level Warning -ShowWithProgress
                         }
                     }
 
                     # Step 3: Create shortcuts if requested
                     if ($CreateShortcuts -and $appConfig.Shortcuts) {
-                        Write-DotWinLog "Creating shortcuts for application: $($appConfig.Name)" -Level Information
+                        Write-DotWinProgress -ProgressId $appProgressId -Status "Creating shortcuts..." -PercentComplete 80
 
                         $shortcutResult = New-ApplicationShortcuts -ApplicationConfig $appConfig
                         $result.Changes.Shortcuts = $shortcutResult.Changes
 
                         if (-not $shortcutResult.Success) {
-                            Write-DotWinLog "Warning: Shortcut creation failed for '$($appConfig.Name)': $($shortcutResult.Message)" -Level Warning
+                            Write-DotWinLog "Warning: Shortcut creation failed for '$($appConfig.Name)': $($shortcutResult.Message)" -Level Warning -ShowWithProgress
                         }
                     }
 
                     $result.Success = $true
                     $result.Message = "Application installed and configured successfully"
-                    Write-DotWinLog "Successfully installed and configured application: $($appConfig.Name)" -Level Information
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Installation completed successfully" -PercentComplete 100
+                    Complete-DotWinProgress -ProgressId $appProgressId -Status "Completed successfully" -Message "Successfully installed and configured application: $($appConfig.Name)"
 
                 } catch {
                     $result.Success = $false
                     $result.Message = "Error installing application: $($_.Exception.Message)"
-                    Write-DotWinLog "Error installing application '$($result.ItemName)': $($_.Exception.Message)" -Level Error
+                    Write-DotWinProgress -ProgressId $appProgressId -Status "Failed" -PercentComplete 100
+                    Complete-DotWinProgress -ProgressId $appProgressId -Status "Failed" -Message "Error installing application '$($result.ItemName)': $($_.Exception.Message)"
                 } finally {
                     $result.Duration = (Get-Date) - $appStartTime
                     $results += $result
@@ -218,7 +252,7 @@ function Install-Applications {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during application installation: $($_.Exception.Message)" -Level Error
+            Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Critical error during application installation: $($_.Exception.Message)"
             throw
         }
     }
@@ -228,12 +262,34 @@ function Install-Applications {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
 
-        Write-DotWinLog "Application installation completed" -Level Information
-        Write-DotWinLog "Total applications processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        # Complete master progress with summary statistics
+        $summaryMetrics = @{
+            TotalApplications = $results.Count
+            SuccessfulApplications = $successCount
+            FailedApplications = $failureCount
+            TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
+            AverageApplicationDuration = if ($results.Count -gt 0) { [Math]::Round(($results | Measure-Object -Property Duration -Average).Average.TotalSeconds, 2) } else { 0 }
+            ConfigurationApplied = ($results | Where-Object { $_.Changes.Configuration }).Count
+            ShortcutsCreated = ($results | Where-Object { $_.Changes.Shortcuts }).Count
+        }
 
-        return $results
+        $summaryMessage = "Application installation completed: $successCount successful, $failureCount failed (Total: $($results.Count) applications, Duration: $($summaryMetrics.TotalDurationSeconds)s)"
+
+        Write-DotWinProgress -ProgressId $masterProgressId -Status "Finalizing..." -PercentComplete 95
+        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
+
+        # Show summary with progress coordination
+        Write-DotWinLog "Application installation completed" -Level Information -ShowWithProgress
+        Write-DotWinLog "Total applications processed: $($results.Count)" -Level Information -ShowWithProgress
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information -ShowWithProgress
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information -ShowWithProgress
+
+        # Ensure we always return an array, even for single items
+        if ($results -is [array]) {
+            return $results
+        } else {
+            return @($results)
+        }
     }
 }
 
@@ -674,11 +730,11 @@ function ConvertTo-ApplicationConfiguration {
         $config.Version = $ApplicationSpec.Version
         $config.Source = if ($ApplicationSpec.Source) { $ApplicationSpec.Source } else { 'winget' }
 
-        if ($ApplicationSpec.AcceptLicense -ne $null) {
+        if ($null -ne $ApplicationSpec.AcceptLicense ) {
             $config.AcceptLicense = $ApplicationSpec.AcceptLicense
         }
 
-        if ($ApplicationSpec.AcceptSourceAgreements -ne $null) {
+        if ($null -ne $ApplicationSpec.AcceptSourceAgreements) {
             $config.AcceptSourceAgreements = $ApplicationSpec.AcceptSourceAgreements
         }
 

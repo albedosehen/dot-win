@@ -1,0 +1,103 @@
+{
+  "name": "DotWin Progress System Test Configuration",
+  "description": "Test configuration for validating the DotWin progress system integration",
+  "version": "1.0.0",
+  "items": [
+    {
+      "name": "TestSystemTools",
+      "type": "SystemTools",
+      "description": "Test system tools installation with progress tracking",
+      "properties": {
+        "requiredTools": [
+          "git",
+          "vscode"
+        ],
+        "category": "Development",
+        "installMethod": "winget"
+      }
+    },
+    {
+      "name": "TestPackages",
+      "type": "Packages",
+      "description": "Test package installation with progress tracking",
+      "properties": {
+        "packageNames": [
+          "7zip",
+          "notepad++",
+          "firefox"
+        ],
+        "packageManager": "winget",
+        "updateExisting": true
+      }
+    },
+    {
+      "name": "TestPowerShellProfile",
+      "type": "PowerShellProfile",
+      "description": "Test PowerShell profile configuration with progress tracking",
+      "properties": {
+        "enableOhMyPosh": true,
+        "installModules": [
+          "PSReadLine",
+          "Terminal-Icons"
+        ],
+        "customizations": {
+          "aliases": {
+            "ll": "Get-ChildItem -Force",
+            "la": "Get-ChildItem -Force -Hidden"
+          }
+        }
+      }
+    },
+    {
+      "name": "TestWindowsTerminal",
+      "type": "WindowsTerminal",
+      "description": "Test Windows Terminal configuration with progress tracking",
+      "properties": {
+        "installFromStore": true,
+        "configureProfiles": true,
+        "theme": "dark",
+        "fontSize": 12,
+        "fontFamily": "Cascadia Code"
+      }
+    },
+    {
+      "name": "TestBloatwareRemoval",
+      "type": "BloatwareRemoval",
+      "description": "Test bloatware removal with progress tracking",
+      "properties": {
+        "removeXboxApps": true,
+        "removeCortana": false,
+        "removeOneDrive": false,
+        "removeEdge": false,
+        "customAppsToRemove": [
+          "Microsoft.BingWeather",
+          "Microsoft.GetHelp"
+        ]
+      }
+    }
+  ],
+  "settings": {
+    "progressTracking": {
+      "enabled": true,
+      "showDetailedProgress": true,
+      "logProgressMetrics": true
+    },
+    "execution": {
+      "continueOnError": true,
+      "parallelExecution": false,
+      "timeoutMinutes": 30
+    },
+    "logging": {
+      "level": "Information",
+      "coordinateWithProgress": true,
+      "showTimestamps": true
+    }
+  },
+  "metadata": {
+    "createdBy": "DotWin Progress System Validation",
+    "createdDate": "2025-06-27",
+    "purpose": "Testing and validation of progress system integration",
+    "testMode": true,
+    "estimatedDuration": "5-10 minutes"
+  }
+}

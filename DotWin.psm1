@@ -58,6 +58,15 @@ try {
     throw
 }
 
+# Initialize progress system
+try {
+    $script:ProgressStackManager = [DotWinProgressStackManager]::new()
+    Write-Verbose "Progress stack manager initialized successfully"
+} catch {
+    Write-Warning "Failed to initialize progress stack manager: $($_.Exception.Message)"
+    $script:ProgressStackManager = $null
+}
+
 # Module variables
 $script:DotWinModuleRoot = $PSScriptRoot
 $script:DotWinConfigPath = Join-Path $PSScriptRoot "config"
@@ -105,6 +114,13 @@ $PublicFunctions = @(
     'New-DotWinConfigurationTemplate'
 )
 
+# Progress system functions (exported for public use)
+$ProgressFunctions = @(
+    'Write-DotWinProgress',
+    'Start-DotWinProgress',
+    'Complete-DotWinProgress'
+)
+
 foreach ($Function in $PublicFunctions) {
     $FunctionPath = Join-Path $PSScriptRoot "functions\$Function.ps1"
     if (Test-Path $FunctionPath) {
@@ -124,7 +140,14 @@ function Write-DotWinLog {
 
         [Parameter()]
         [ValidateSet('Information', 'Warning', 'Error', 'Verbose')]
-        [string]$Level = 'Information'
+        [string]$Level = 'Information',
+
+        # New parameters for progress coordination
+        [Parameter()]
+        [switch]$ShowWithProgress,
+
+        [Parameter()]
+        [string]$ProgressId
     )
 
     if (-not $PSBoundParameters.ContainsKey('Message') -or [string]::IsNullOrWhiteSpace($Message)) {
@@ -134,11 +157,22 @@ function Write-DotWinLog {
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $logMessage = "[$timestamp] [$Level] $Message"
 
-    switch ($Level) {
-        'Information' { Write-Information $logMessage -InformationAction Continue }
-        'Warning' { Write-Warning $logMessage }
-        'Error' { Write-Error $logMessage }
-        'Verbose' { Write-Verbose $logMessage }
+    # Enhanced logic to coordinate with progress display
+    if ($script:ProgressStackManager -and $script:ProgressStackManager.IsProgressActive) {
+        if ($Level -in @('Warning', 'Error') -or $ShowWithProgress) {
+            $script:ProgressStackManager.ShowMessage($logMessage, $Level)
+        } elseif ($VerbosePreference -ne 'SilentlyContinue' -or $DebugPreference -ne 'SilentlyContinue') {
+            $script:ProgressStackManager.ShowMessage($logMessage, $Level)
+        }
+        # Otherwise, message is suppressed during progress display
+    } else {
+        # Original logging behavior when no progress is active
+        switch ($Level) {
+            'Information' { Write-Information $logMessage -InformationAction Continue }
+            'Warning' { Write-Warning $logMessage }
+            'Error' { Write-Error $logMessage }
+            'Verbose' { Write-Verbose $logMessage }
+        }
     }
 
     if ($script:DotWinLogPath -and (Test-Path (Split-Path $script:DotWinLogPath -Parent))) {
@@ -146,9 +180,206 @@ function Write-DotWinLog {
     }
 }
 
+# Core progress functions
+function Write-DotWinProgress {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Activity,
+
+        [Parameter()]
+        [string]$Status,
+
+        [Parameter()]
+        [int]$PercentComplete = -1,
+
+        [Parameter()]
+        [int]$CurrentOperation = -1,
+
+        [Parameter()]
+        [int]$TotalOperations = -1,
+
+        [Parameter()]
+        [string]$ParentId,
+
+        [Parameter()]
+        [string]$ProgressId,
+
+        [Parameter()]
+        [switch]$Completed,
+
+        [Parameter()]
+        [hashtable]$Metrics,
+
+        [Parameter()]
+        [ValidateSet('Information', 'Warning', 'Error')]
+        [string]$MessageLevel = 'Information',
+
+        [Parameter()]
+        [string]$Message,
+
+        [Parameter()]
+        [switch]$ShowMetrics,
+
+        [Parameter()]
+        [switch]$Force
+    )
+
+    # Validate parameters
+    if (-not $ProgressId -and -not $Activity) {
+        throw "Activity parameter is required when creating a new progress operation"
+    }
+
+    if (-not $script:ProgressStackManager) {
+        Write-Warning "Progress system not initialized. Falling back to Write-Progress."
+        if ($Completed) {
+            Write-Progress -Activity $Activity -Completed
+        } else {
+            Write-Progress -Activity $Activity -Status $Status -PercentComplete $PercentComplete
+        }
+        return $Id
+    }
+
+    try {
+        if ($Completed -and $ProgressId) {
+            # Complete existing progress operation
+            $context = $script:ProgressStackManager.PopContext($ProgressId)
+            if ($context) {
+                $context.Complete()
+                if ($Metrics) {
+                    foreach ($metric in $Metrics.GetEnumerator()) {
+                        $context.AddMetric($metric.Key, $metric.Value)
+                    }
+                }
+                $script:ProgressStackManager.RefreshDisplay()
+            }
+            return $ProgressId
+        }
+
+        if ($ProgressId) {
+            # Update existing progress operation
+            $updates = @{}
+            if ($PSBoundParameters.ContainsKey('PercentComplete')) { $updates['PercentComplete'] = $PercentComplete }
+            if ($PSBoundParameters.ContainsKey('Status')) { $updates['Status'] = $Status }
+            if ($PSBoundParameters.ContainsKey('CurrentOperation')) { $updates['CurrentOperation'] = $CurrentOperation }
+            if ($PSBoundParameters.ContainsKey('TotalOperations')) { $updates['TotalOperations'] = $TotalOperations }
+
+            if ($Metrics) {
+                foreach ($metric in $Metrics.GetEnumerator()) {
+                    $updates[$metric.Key] = $metric.Value
+                }
+            }
+
+            $script:ProgressStackManager.UpdateContext($ProgressId, $updates)
+            $script:ProgressStackManager.RefreshDisplay()
+
+            if ($Message) {
+                Write-DotWinLog -Message $Message -Level $MessageLevel -ShowWithProgress -ProgressId $ProgressId
+            }
+
+            return $ProgressId
+        } else {
+            # Create new progress operation
+            $context = [DotWinProgressContext]::new($Activity)
+
+            if ($ParentId) {
+                $context.ParentId = $ParentId
+            }
+
+            if ($PSBoundParameters.ContainsKey('Status')) { $context.Status = $Status }
+            if ($PSBoundParameters.ContainsKey('PercentComplete')) { $context.PercentComplete = $PercentComplete }
+            if ($PSBoundParameters.ContainsKey('CurrentOperation')) { $context.CurrentOperation = $CurrentOperation }
+            if ($PSBoundParameters.ContainsKey('TotalOperations')) { $context.TotalOperations = $TotalOperations }
+
+            if ($Metrics) {
+                foreach ($metric in $Metrics.GetEnumerator()) {
+                    $context.AddMetric($metric.Key, $metric.Value)
+                }
+            }
+
+            $progressId = $script:ProgressStackManager.PushContext($context)
+            $script:ProgressStackManager.RefreshDisplay()
+
+            if ($Message) {
+                Write-DotWinLog -Message $Message -Level $MessageLevel -ShowWithProgress -ProgressId $progressId
+            }
+
+            return $progressId
+        }
+    } catch {
+        Write-Warning "Progress operation failed: $($_.Exception.Message)"
+        # Fallback to standard Write-Progress
+        if ($Completed) {
+            Write-Progress -Activity $Activity -Completed
+        } else {
+            Write-Progress -Activity $Activity -Status $Status -PercentComplete $PercentComplete
+        }
+        return $ProgressId
+    }
+}
+
+function Start-DotWinProgress {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Activity,
+
+        [Parameter()]
+        [string]$Status = "Starting...",
+
+        [Parameter()]
+        [string]$ParentId,
+
+        [Parameter()]
+        [int]$TotalOperations = -1,
+
+        [Parameter()]
+        [hashtable]$InitialMetrics
+    )
+
+    $params = @{
+        Activity = $Activity
+        Status = $Status
+    }
+
+    if ($ParentId) { $params['ParentId'] = $ParentId }
+    if ($TotalOperations -gt 0) { $params['TotalOperations'] = $TotalOperations }
+    if ($InitialMetrics) { $params['Metrics'] = $InitialMetrics }
+
+    return Write-DotWinProgress @params
+}
+
+function Complete-DotWinProgress {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProgressId,
+
+        [Parameter()]
+        [string]$Status = "Completed",
+
+        [Parameter()]
+        [hashtable]$FinalMetrics,
+
+        [Parameter()]
+        [string]$Message
+    )
+
+    $params = @{
+        ProgressId = $ProgressId
+        Completed = $true
+        Status = $Status
+    }
+
+    if ($FinalMetrics) { $params['Metrics'] = $FinalMetrics }
+    if ($Message) { $params['Message'] = $Message }
+
+    Write-DotWinProgress @params
+}
+
 
 # Export module members
-Export-ModuleMember -Function $PublicFunctions
+Export-ModuleMember -Function ($PublicFunctions + $ProgressFunctions)
 Export-ModuleMember -Variable @()
 
 Write-Verbose "DotWin module initialization complete."

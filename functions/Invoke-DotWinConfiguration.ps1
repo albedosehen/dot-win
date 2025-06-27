@@ -81,16 +81,28 @@ function Invoke-DotWinConfiguration {
     )
 
     begin {
-        Write-DotWinLog "Starting configuration application" -Level Information
+        # Start master progress bar for overall configuration process
+        $masterProgressId = Start-DotWinProgress -Activity "Applying DotWin Configuration" -Status "Initializing..." -TotalOperations 3
         
-        # Validate environment
-        $envTest = Test-DotWinEnvironment
-        if (-not $envTest.IsValid) {
-            throw "Environment validation failed: $($envTest.Issues -join ', ')"
-        }
+        try {
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Validating environment..." -PercentComplete 10
 
-        $results = @()
-        $startTime = Get-Date
+            # Validate environment
+            $envTest = Test-DotWinEnvironment
+            if (-not $envTest.IsValid) {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Environment validation failed: $($envTest.Issues -join ', ')"
+                throw "Environment validation failed: $($envTest.Issues -join ', ')"
+            }
+
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Environment validated successfully" -PercentComplete 20
+            $results = @()
+            $startTime = Get-Date
+        } catch {
+            if ($masterProgressId) {
+                Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Initialization failed: $($_.Exception.Message)"
+            }
+            throw
+        }
     }
 
     process {
@@ -133,7 +145,7 @@ function Invoke-DotWinConfiguration {
 
             # Load configuration if path was provided
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
-                Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level Information
+                Write-DotWinProgress -ProgressId $masterProgressId -Status "Loading configuration from: $ConfigurationPath" -PercentComplete 30
                 
                 # Create configuration parser
                 $parser = [DotWinConfigurationParser]::new()
@@ -142,6 +154,7 @@ function Invoke-DotWinConfiguration {
                     # Load all configuration files from directory
                     $configFiles = Get-ChildItem -Path $ConfigurationPath -Filter "*.json" -Recurse
                     if ($configFiles.Count -eq 0) {
+                        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "No configuration files found in directory: $ConfigurationPath"
                         throw "No configuration files found in directory: $ConfigurationPath"
                     }
                     
@@ -149,8 +162,12 @@ function Invoke-DotWinConfiguration {
                     $Configuration = [DotWinConfiguration]::new("DirectoryConfiguration")
                     $Configuration.Description = "Combined configuration from directory: $ConfigurationPath"
 
+                    $fileIndex = 0
                     foreach ($file in $configFiles) {
-                        Write-DotWinLog "Loading configuration file: $($file.FullName)" -Level Verbose
+                        $fileIndex++
+                        $fileProgress = [Math]::Round((($fileIndex / $configFiles.Count) * 20) + 30, 0)
+                        Write-DotWinProgress -ProgressId $masterProgressId -Status "Loading file $fileIndex of $($configFiles.Count): $($file.Name)" -PercentComplete $fileProgress
+
                         try {
                             $fileConfig = $parser.ParseFromFile($file.FullName)
 
@@ -159,7 +176,7 @@ function Invoke-DotWinConfiguration {
                                 try {
                                     $Configuration.AddItem($item)
                                 } catch {
-                                    Write-Warning "Skipping duplicate item '$($item.Name)' from file '$($file.Name)': $($_.Exception.Message)"
+                                    Write-DotWinLog "Skipping duplicate item '$($item.Name)' from file '$($file.Name)': $($_.Exception.Message)" -Level Warning -ShowWithProgress
                                 }
                             }
 
@@ -170,17 +187,18 @@ function Invoke-DotWinConfiguration {
                                 }
                             }
 
-                            Write-DotWinLog "Successfully loaded $($fileConfig.Items.Count) items from: $($file.Name)" -Level Information
+                            Write-DotWinLog "Successfully loaded $($fileConfig.Items.Count) items from: $($file.Name)" -Level Information -ShowWithProgress
                         } catch {
-                            Write-Warning "Error loading configuration file '$($file.FullName)': $($_.Exception.Message)"
+                            Write-DotWinLog "Error loading configuration file '$($file.FullName)': $($_.Exception.Message)" -Level Warning -ShowWithProgress
                         }
                     }
                 } else {
                     # Load single configuration file
                     try {
                         $Configuration = $parser.ParseFromFile($ConfigurationPath)
-                        Write-DotWinLog "Successfully loaded configuration with $($Configuration.Items.Count) items" -Level Information
+                        Write-DotWinLog "Successfully loaded configuration with $($Configuration.Items.Count) items" -Level Information -ShowWithProgress
                     } catch {
+                        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Error loading configuration file '$ConfigurationPath': $($_.Exception.Message)"
                         throw "Error loading configuration file '$ConfigurationPath': $($_.Exception.Message)"
                     }
                 }
@@ -191,30 +209,41 @@ function Invoke-DotWinConfiguration {
             
             if ($IncludeType) {
                 $itemsToProcess = $itemsToProcess | Where-Object { $_.Type -in $IncludeType }
-                Write-DotWinLog "Filtered to include types: $($IncludeType -join ', ')" -Level Information
+                Write-DotWinLog "Filtered to include types: $($IncludeType -join ', ')" -Level Information -ShowWithProgress
             }
             
             if ($ExcludeType) {
                 $itemsToProcess = $itemsToProcess | Where-Object { $_.Type -notin $ExcludeType }
-                Write-DotWinLog "Filtered to exclude types: $($ExcludeType -join ', ')" -Level Information
+                Write-DotWinLog "Filtered to exclude types: $($ExcludeType -join ', ')" -Level Information -ShowWithProgress
             }
 
-            Write-DotWinLog "Processing $($itemsToProcess.Count) configuration items" -Level Information
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Processing $($itemsToProcess.Count) configuration items" -PercentComplete 50 -TotalOperations $itemsToProcess.Count
 
-            # Process configuration items
+            # Process configuration items with nested progress
+            $itemIndex = 0
             foreach ($item in $itemsToProcess) {
                 if (-not $item.Enabled) {
-                    Write-DotWinLog "Skipping disabled item: $($item.Name)" -Level Verbose
+                    Write-DotWinLog "Skipping disabled item: $($item.Name)" -Level Verbose -ShowWithProgress
                     continue
                 }
+
+                $itemIndex++
+                $itemProgressPercent = [Math]::Round((($itemIndex / $itemsToProcess.Count) * 40) + 50, 0)
+
+                # Create nested progress for individual item
+                $itemProgressId = Start-DotWinProgress -Activity "Processing: $($item.Name)" -Status "Initializing..." -ParentId $masterProgressId
+
+                # Update master progress
+                Write-DotWinProgress -ProgressId $masterProgressId -Status "Processing item $itemIndex of $($itemsToProcess.Count): $($item.Name)" -PercentComplete $itemProgressPercent -CurrentOperation $itemIndex
 
                 $itemStartTime = Get-Date
                 $result = [DotWinExecutionResult]::new()
                 $result.ItemName = $item.Name
                 $result.ItemType = $item.Type
+                $result.ProgressId = $itemProgressId
 
                 try {
-                    Write-DotWinLog "Processing item: $($item.Name) (Type: $($item.Type))" -Level Information
+                    Write-DotWinProgress -ProgressId $itemProgressId -Status "Testing current state..." -PercentComplete 20
 
                     # Test current state unless forced
                     if (-not $Force) {
@@ -222,14 +251,15 @@ function Invoke-DotWinConfiguration {
                         if ($testResult) {
                             $result.Success = $true
                             $result.Message = "Item already in desired state"
-                            Write-DotWinLog "Item '$($item.Name)' already in desired state" -Level Information
+                            Write-DotWinProgress -ProgressId $itemProgressId -Status "Already in desired state" -PercentComplete 100
+                            Complete-DotWinProgress -ProgressId $itemProgressId -Status "Completed (no changes needed)" -Message "Item '$($item.Name)' already in desired state"
                         }
                     }
 
                     # Apply configuration if needed
                     if ($Force -or -not $testResult) {
                         if ($PSCmdlet.ShouldProcess($item.Name, "Apply configuration")) {
-                            Write-DotWinLog "Applying configuration for item: $($item.Name)" -Level Information
+                            Write-DotWinProgress -ProgressId $itemProgressId -Status "Applying configuration..." -PercentComplete 50
                             
                             # Get current state for comparison
                             $beforeState = $item.GetCurrentState()
@@ -246,21 +276,24 @@ function Invoke-DotWinConfiguration {
                             
                             $result.Success = $true
                             $result.Message = "Configuration applied successfully"
-                            Write-DotWinLog "Successfully applied configuration for item: $($item.Name)" -Level Information
+                            Write-DotWinProgress -ProgressId $itemProgressId -Status "Configuration applied successfully" -PercentComplete 100
+                            Complete-DotWinProgress -ProgressId $itemProgressId -Status "Completed successfully" -Message "Successfully applied configuration for item: $($item.Name)"
                         } else {
                             $result.Success = $true
                             $result.Message = "Configuration application skipped (WhatIf)"
-                            Write-DotWinLog "Configuration application skipped for item: $($item.Name) (WhatIf)" -Level Information
+                            Write-DotWinProgress -ProgressId $itemProgressId -Status "Skipped (WhatIf mode)" -PercentComplete 100
+                            Complete-DotWinProgress -ProgressId $itemProgressId -Status "Skipped (WhatIf)" -Message "Configuration application skipped for item: $($item.Name) (WhatIf)"
                         }
                     }
                 } catch {
                     $result.Success = $false
                     $result.Message = "Error applying configuration: $($_.Exception.Message)"
-                    Write-DotWinLog "Error applying configuration for item '$($item.Name)': $($_.Exception.Message)" -Level Error
+                    Write-DotWinProgress -ProgressId $itemProgressId -Status "Failed" -PercentComplete 100
+                    Complete-DotWinProgress -ProgressId $itemProgressId -Status "Failed" -Message "Error applying configuration for item '$($item.Name)': $($_.Exception.Message)"
                     
                     # Continue processing other items unless it's a critical error
                     if ($_.Exception.Message -match "Critical error occurred") {
-                        Write-DotWinLog "Critical error during configuration application: $($_.Exception.Message)" -Level Error
+                        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Critical error during configuration application: $($_.Exception.Message)"
                         throw
                     }
                 } finally {
@@ -270,7 +303,7 @@ function Invoke-DotWinConfiguration {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during configuration application: $($_.Exception.Message)" -Level Error
+            Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Critical error during configuration application: $($_.Exception.Message)"
             throw
         }
     }
@@ -280,11 +313,26 @@ function Invoke-DotWinConfiguration {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
         
-        Write-DotWinLog "Configuration application completed" -Level Information
-        Write-DotWinLog "Total items processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        # Complete master progress with summary statistics
+        $summaryMetrics = @{
+            TotalItems = $results.Count
+            SuccessfulItems = $successCount
+            FailedItems = $failureCount
+            TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
+            AverageItemDuration = if ($results.Count -gt 0) { [Math]::Round(($results | Measure-Object -Property Duration -Average).Average.TotalSeconds, 2) } else { 0 }
+        }
         
+        $summaryMessage = "Configuration application completed: $successCount successful, $failureCount failed (Total: $($results.Count) items, Duration: $($summaryMetrics.TotalDurationSeconds)s)"
+
+        Write-DotWinProgress -ProgressId $masterProgressId -Status "Finalizing..." -PercentComplete 95
+        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
+
+        # Show summary with progress coordination
+        Write-DotWinLog "Configuration application completed" -Level Information -ShowWithProgress
+        Write-DotWinLog "Total items processed: $($results.Count)" -Level Information -ShowWithProgress
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information -ShowWithProgress
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information -ShowWithProgress
+
         # Ensure we always return an array, even for single items
         if ($results -is [array]) {
             return $results

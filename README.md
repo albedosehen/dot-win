@@ -11,6 +11,7 @@ DotWin takes care of the boring stuff when setting up a Windows computer:
 - Sets up development tools if you're a programmer
 - Configures Windows settings for better performance
 - Updates drivers to keep everything running smoothly
+- Shows clear progress bars so you know what's happening
 
 ## Quick Start (Just 3 Steps!)
 
@@ -43,6 +44,31 @@ Invoke-DotWinConfiguration
 ```
 
 That's it! DotWin will now set up your system based on what it thinks will work best for you.
+
+## Visual Progress System
+
+DotWin now includes a smart progress system that shows you exactly what's happening:
+
+- **Clear Progress Bars**: See real-time progress for all operations
+- **Nested Operations**: Watch as complex tasks break down into smaller steps
+- **Smart Logging**: Important messages appear alongside progress bars
+- **Verbose Mode**: Use `-Verbose` to see detailed technical information
+- **No Interruptions**: Progress bars keep the interface clean and organized
+
+### Example with Progress Bars
+
+```powershell
+# This will show progress bars for each step
+Invoke-DotWinConfiguration
+
+# For detailed technical output, use verbose mode
+Invoke-DotWinConfiguration -Verbose
+
+# See what would happen without making changes
+Invoke-DotWinConfiguration -WhatIf
+```
+
+The progress system automatically coordinates with all DotWin functions, so you'll see clear progress whether you're installing applications, removing bloatware, or configuring system settings.
 
 ## How to Generate Config Files
 

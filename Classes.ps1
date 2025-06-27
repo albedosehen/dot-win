@@ -66,6 +66,14 @@ class DotWinExecutionResult {
     [DateTime]$Timestamp
     [TimeSpan]$Duration
 
+    # New progress-related properties
+    [hashtable]$ProgressMetrics
+    [hashtable]$PerformanceCounters
+    [string]$ProgressId
+    [TimeSpan]$EstimatedDuration
+    [double]$ThroughputRate
+    [int]$OperationCount
+
     DotWinExecutionResult() {
         $this.Success = $false
         $this.Message = ""
@@ -75,6 +83,12 @@ class DotWinExecutionResult {
         $this.Changes = @{}
         $this.Timestamp = Get-Date
         $this.Duration = [TimeSpan]::Zero
+        $this.ProgressMetrics = @{}
+        $this.PerformanceCounters = @{}
+        $this.ProgressId = ""
+        $this.EstimatedDuration = [TimeSpan]::Zero
+        $this.ThroughputRate = 0.0
+        $this.OperationCount = 0
     }
 
     DotWinExecutionResult([bool]$success, [string]$message, [hashtable]$data) {
@@ -86,6 +100,12 @@ class DotWinExecutionResult {
         $this.Changes = @{}
         $this.Timestamp = Get-Date
         $this.Duration = [TimeSpan]::Zero
+        $this.ProgressMetrics = @{}
+        $this.PerformanceCounters = @{}
+        $this.ProgressId = ""
+        $this.EstimatedDuration = [TimeSpan]::Zero
+        $this.ThroughputRate = 0.0
+        $this.OperationCount = 0
     }
 
     DotWinExecutionResult([bool]$success, [string]$itemName, [string]$message) {
@@ -97,6 +117,12 @@ class DotWinExecutionResult {
         $this.Changes = @{}
         $this.Timestamp = Get-Date
         $this.Duration = [TimeSpan]::Zero
+        $this.ProgressMetrics = @{}
+        $this.PerformanceCounters = @{}
+        $this.ProgressId = ""
+        $this.EstimatedDuration = [TimeSpan]::Zero
+        $this.ThroughputRate = 0.0
+        $this.OperationCount = 0
     }
 }
 
@@ -137,6 +163,241 @@ class DotWinValidationResult {
         $this.Details = @{}
         $this.Severity = if ($isValid) { "Information" } else { "Error" }
         $this.Timestamp = Get-Date
+    }
+}
+
+# Progress System Classes
+
+class DotWinProgressContext {
+    [string]$Id
+    [string]$ParentId
+    [string]$Activity
+    [string]$Status
+    [int]$PercentComplete
+    [int]$CurrentOperation
+    [int]$TotalOperations
+    [DateTime]$StartTime
+    [DateTime]$LastUpdate
+    [hashtable]$Metrics
+    [hashtable]$PerformanceCounters
+    [bool]$IsCompleted
+    [System.Collections.Generic.List[string]]$ChildContexts
+
+    DotWinProgressContext() {
+        $this.Id = [System.Guid]::NewGuid().ToString()
+        $this.ParentId = ""
+        $this.Activity = ""
+        $this.Status = ""
+        $this.PercentComplete = -1
+        $this.CurrentOperation = -1
+        $this.TotalOperations = -1
+        $this.StartTime = Get-Date
+        $this.LastUpdate = Get-Date
+        $this.Metrics = @{}
+        $this.PerformanceCounters = @{}
+        $this.IsCompleted = $false
+        $this.ChildContexts = [System.Collections.Generic.List[string]]::new()
+    }
+
+    DotWinProgressContext([string]$activity) {
+        $this.Id = [System.Guid]::NewGuid().ToString()
+        $this.ParentId = ""
+        $this.Activity = $activity
+        $this.Status = ""
+        $this.PercentComplete = -1
+        $this.CurrentOperation = -1
+        $this.TotalOperations = -1
+        $this.StartTime = Get-Date
+        $this.LastUpdate = Get-Date
+        $this.Metrics = @{}
+        $this.PerformanceCounters = @{}
+        $this.IsCompleted = $false
+        $this.ChildContexts = [System.Collections.Generic.List[string]]::new()
+    }
+
+    [void] UpdateProgress([int]$percent, [string]$status) {
+        $this.PercentComplete = $percent
+        $this.Status = $status
+        $this.LastUpdate = Get-Date
+    }
+
+    [void] AddMetric([string]$name, [object]$value) {
+        $this.Metrics[$name] = $value
+        $this.LastUpdate = Get-Date
+    }
+
+    [hashtable] GetPerformanceSnapshot() {
+        $elapsed = (Get-Date) - $this.StartTime
+        $snapshot = @{
+            ElapsedTime = $elapsed
+            StartTime = $this.StartTime
+            LastUpdate = $this.LastUpdate
+            PercentComplete = $this.PercentComplete
+            CurrentOperation = $this.CurrentOperation
+            TotalOperations = $this.TotalOperations
+            IsCompleted = $this.IsCompleted
+        }
+
+        # Add custom metrics
+        foreach ($metric in $this.Metrics.GetEnumerator()) {
+            $snapshot[$metric.Key] = $metric.Value
+        }
+
+        return $snapshot
+    }
+
+    [void] Complete() {
+        $this.IsCompleted = $true
+        $this.PercentComplete = 100
+        $this.LastUpdate = Get-Date
+        $this.AddMetric("CompletionTime", (Get-Date))
+        $this.AddMetric("TotalDuration", ((Get-Date) - $this.StartTime))
+    }
+
+    [string] GenerateDisplayText() {
+        $progressBar = ""
+        if ($this.PercentComplete -ge 0) {
+            $barLength = 40
+            $filledLength = [Math]::Floor(($this.PercentComplete / 100) * $barLength)
+            $progressBar = "[" + ("█" * $filledLength) + ("░" * ($barLength - $filledLength)) + "] $($this.PercentComplete)%"
+        }
+
+        $operationText = ""
+        if ($this.CurrentOperation -gt 0 -and $this.TotalOperations -gt 0) {
+            $operationText = " ($($this.CurrentOperation)/$($this.TotalOperations))"
+        }
+
+        $statusText = if ($this.Status) { ": $($this.Status)" } else { "" }
+
+        return "$($this.Activity)$operationText$statusText $progressBar"
+    }
+}
+
+class DotWinProgressStackManager {
+    [System.Collections.Generic.Stack[DotWinProgressContext]]$ProgressStack
+    [hashtable]$ActiveContexts
+    [object]$ConsoleLock
+    [bool]$IsProgressActive
+    [int]$NextProgressId
+
+    DotWinProgressStackManager() {
+        $this.ProgressStack = [System.Collections.Generic.Stack[DotWinProgressContext]]::new()
+        $this.ActiveContexts = @{}
+        $this.ConsoleLock = [System.Object]::new()
+        $this.IsProgressActive = $false
+        $this.NextProgressId = 1
+    }
+
+    [string] PushContext([DotWinProgressContext]$context) {
+        if (-not $context.Id) {
+            $context.Id = "Progress_$($this.NextProgressId)"
+            $this.NextProgressId++
+        }
+
+        $this.ProgressStack.Push($context)
+        $this.ActiveContexts[$context.Id] = $context
+        $this.IsProgressActive = $true
+
+        return $context.Id
+    }
+
+    [DotWinProgressContext] PopContext([string]$id) {
+        if ($this.ActiveContexts.ContainsKey($id)) {
+            $context = $this.ActiveContexts[$id]
+            $this.ActiveContexts.Remove($id)
+
+            # Remove from stack if it's the top item
+            if ($this.ProgressStack.Count -gt 0 -and $this.ProgressStack.Peek().Id -eq $id) {
+                $this.ProgressStack.Pop()
+            }
+
+            if ($this.ActiveContexts.Count -eq 0) {
+                $this.IsProgressActive = $false
+            }
+
+            return $context
+        }
+        return $null
+    }
+
+    [DotWinProgressContext] GetCurrentContext() {
+        if ($this.ProgressStack.Count -gt 0) {
+            return $this.ProgressStack.Peek()
+        }
+        return $null
+    }
+
+    [void] UpdateContext([string]$id, [hashtable]$updates) {
+        if ($this.ActiveContexts.ContainsKey($id)) {
+            $context = $this.ActiveContexts[$id]
+
+            foreach ($update in $updates.GetEnumerator()) {
+                switch ($update.Key) {
+                    'PercentComplete' { $context.PercentComplete = $update.Value }
+                    'Status' { $context.Status = $update.Value }
+                    'CurrentOperation' { $context.CurrentOperation = $update.Value }
+                    'TotalOperations' { $context.TotalOperations = $update.Value }
+                    default { $context.AddMetric($update.Key, $update.Value) }
+                }
+            }
+
+            $context.LastUpdate = Get-Date
+        }
+    }
+
+    [void] RefreshDisplay() {
+        if (-not $this.IsProgressActive) {
+            return
+        }
+
+        # Lock console output to prevent interference
+        [System.Threading.Monitor]::Enter($this.ConsoleLock)
+        try {
+            # Clear previous progress display
+            $this.ClearProgress()
+
+            # Display all active progress contexts
+            $sortedContexts = $this.ActiveContexts.Values | Sort-Object { $_.StartTime }
+            foreach ($context in $sortedContexts) {
+                if (-not $context.IsCompleted) {
+                    $displayText = $context.GenerateDisplayText()
+                    $null = $displayText
+                    Write-Progress -Activity $context.Activity -Status $context.Status -PercentComplete $context.PercentComplete -Id ([Math]::Abs([int]$context.Id.GetHashCode()))
+                }
+            }
+        }
+        finally {
+            [System.Threading.Monitor]::Exit($this.ConsoleLock)
+        }
+    }
+
+    [void] ClearProgress() {
+        # Clear all active progress bars
+        foreach ($context in $this.ActiveContexts.Values) {
+            Write-Progress -Activity $context.Activity -Completed -Id ([Math]::Abs([int]$context.Id.GetHashCode()))
+        }
+    }
+
+    [void] ShowMessage([string]$message, [string]$level) {
+        [System.Threading.Monitor]::Enter($this.ConsoleLock)
+        try {
+            # Temporarily clear progress to show message
+            $this.ClearProgress()
+
+            # Show the message
+            switch ($level) {
+                'Warning' { Write-Warning $message }
+                'Error' { Write-Error $message }
+                'Verbose' { Write-Verbose $message }
+                default { Write-Information $message -InformationAction Continue }
+            }
+
+            # Restore progress display
+            $this.RefreshDisplay()
+        }
+        finally {
+            [System.Threading.Monitor]::Exit($this.ConsoleLock)
+        }
     }
 }
 

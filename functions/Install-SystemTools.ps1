@@ -76,7 +76,7 @@ function Install-SystemTools {
     )
 
     begin {
-    Write-Verbose "Starting system tools installation..."
+        Write-DotWinLog "Starting system tools installation..." -Level Verbose
     
     # Define system tools catalog
     $systemToolsCatalog = @{
@@ -383,10 +383,15 @@ function Install-SystemTools {
 }
 
 process {
+    # Start master progress for system tools installation
+    $masterProgressId = Start-DotWinProgress -Activity "Installing System Tools" -Status "Initializing..." -TotalOperations 4
+
     try {
         $startTime = Get-Date
         $installResults = @()
         
+        Write-DotWinProgress -ProgressId $masterProgressId -Status "Analyzing tool requirements..." -PercentComplete 10
+
         # Determine which tools to install
         $toolsToInstall = @()
         
@@ -402,15 +407,15 @@ process {
                     }
                 }
                 if (-not $found) {
-                    Write-Warning "Tool '$toolName' not found in catalog"
+                    Write-DotWinLog "Tool '$toolName' not found in catalog" -Level Warning -ShowWithProgress
                 }
             }
         } else {
             # Install tools by category
-            $categoriesToInstall = if ($ToolCategory -eq 'All') { 
-                $systemToolsCatalog.Keys 
-            } else { 
-                @($ToolCategory) 
+            $categoriesToInstall = if ($ToolCategory -eq 'All') {
+                $systemToolsCatalog.Keys
+            } else {
+                @($ToolCategory)
             }
             
             foreach ($category in $categoriesToInstall) {
@@ -425,17 +430,26 @@ process {
             }
         }
         
-        Write-Verbose "Found $($toolsToInstall.Count) tools to install"
+        Write-DotWinProgress -ProgressId $masterProgressId -Status "Found $($toolsToInstall.Count) tools to install" -PercentComplete 20 -TotalOperations $toolsToInstall.Count
         
-        # Install each tool
+        # Install each tool with nested progress
+        $toolIndex = 0
         foreach ($tool in $toolsToInstall) {
-            Write-Progress -Activity "Installing System Tools" -Status "Installing $($tool.Name)" -PercentComplete (($installResults.Count / $toolsToInstall.Count) * 100)
+            $toolIndex++
+            $toolProgressPercent = [Math]::Round((($toolIndex / $toolsToInstall.Count) * 70) + 20, 0)
             
+            # Create nested progress for individual tool installation
+            $toolProgressId = Start-DotWinProgress -Activity "Installing: $($tool.Name)" -Status "Checking installation status..." -ParentId $masterProgressId
+
+            # Update master progress
+            Write-DotWinProgress -ProgressId $masterProgressId -Status "Installing tool $toolIndex of $($toolsToInstall.Count): $($tool.Name)" -PercentComplete $toolProgressPercent -CurrentOperation $toolIndex
+
             # Check if tool is already installed
             $isInstalled = Test-ToolInstalled -Tool $tool
             
             if ($isInstalled -and -not $Force) {
-                Write-Verbose "$($tool.Name) is already installed, skipping..."
+                Write-DotWinProgress -ProgressId $toolProgressId -Status "Already installed, skipping..." -PercentComplete 100
+                Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (already installed)" -Message "$($tool.Name) is already installed"
                 
                 $installResults += [DotWinExecutionResult]::new(
                     $true,
@@ -444,18 +458,22 @@ process {
                 )
                 $installResults[-1].ItemType = "SystemTool"
                 $installResults[-1].Changes["AlreadyInstalled"] = $true
+                $installResults[-1].ProgressId = $toolProgressId
                 continue
             }
             
             # Install the tool
             $installResult = $null
             
+            Write-DotWinProgress -ProgressId $toolProgressId -Status "Installing via $Source..." -PercentComplete 30
+
             switch ($Source) {
                 'Winget' {
                     if ($tool.WingetId) {
                         $installResult = Install-ToolViaWinget -Tool $tool
                     } else {
-                        Write-Warning "$($tool.Name) does not have a Winget package ID"
+                        Write-DotWinLog "$($tool.Name) does not have a Winget package ID" -Level Warning -ShowWithProgress
+                        Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (no Winget ID)" -Message "$($tool.Name) does not have a Winget package ID"
                         continue
                     }
                 }
@@ -464,7 +482,8 @@ process {
                     if ($tool.ChocolateyId) {
                         $installResult = Install-ToolViaChocolatey -Tool $tool
                     } else {
-                        Write-Warning "$($tool.Name) does not have a Chocolatey package ID"
+                        Write-DotWinLog "$($tool.Name) does not have a Chocolatey package ID" -Level Warning -ShowWithProgress
+                        Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (no Chocolatey ID)" -Message "$($tool.Name) does not have a Chocolatey package ID"
                         continue
                     }
                 }
@@ -476,17 +495,21 @@ process {
                     } elseif ($tool.ChocolateyId) {
                         $installResult = Install-ToolViaChocolatey -Tool $tool
                     } else {
-                        Write-Warning "$($tool.Name) does not have package manager support"
+                        Write-DotWinLog "$($tool.Name) does not have package manager support" -Level Warning -ShowWithProgress
+                        Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (no package manager)" -Message "$($tool.Name) does not have package manager support"
                         continue
                     }
                 }
                 
                 'Manual' {
-                    Write-Warning "Manual installation not implemented for $($tool.Name)"
+                    Write-DotWinLog "Manual installation not implemented for $($tool.Name)" -Level Warning -ShowWithProgress
+                    Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (manual not implemented)" -Message "Manual installation not implemented for $($tool.Name)"
                     continue
                 }
             }
             
+            Write-DotWinProgress -ProgressId $toolProgressId -Status "Installation completed, creating result..." -PercentComplete 80
+
             # Create execution result
             $executionResult = [DotWinExecutionResult]::new(
                 $installResult.Success,
@@ -497,9 +520,11 @@ process {
             $executionResult.Changes["InstallMethod"] = $installResult.Method
             $executionResult.Changes["ExitCode"] = $installResult.ExitCode
             $executionResult.Changes["Category"] = $tool.Category
+            $executionResult.ProgressId = $toolProgressId
             
             # Verify installation if not skipped
             if ($installResult.Success -and -not $SkipVerification -and -not $WhatIfPreference) {
+                Write-DotWinProgress -ProgressId $toolProgressId -Status "Verifying installation..." -PercentComplete 90
                 Start-Sleep -Seconds 2 # Give the installation time to complete
                 $verificationResult = Test-ToolInstalled -Tool $tool
                 $executionResult.Changes["Verified"] = $verificationResult
@@ -507,15 +532,22 @@ process {
                 if (-not $verificationResult) {
                     $executionResult.Success = $false
                     $executionResult.Message += " (Verification failed)"
+                    Complete-DotWinProgress -ProgressId $toolProgressId -Status "Failed (verification failed)" -Message "Tool installation failed verification: $($tool.Name)"
+                } else {
+                    Complete-DotWinProgress -ProgressId $toolProgressId -Status "Completed successfully" -Message "Successfully installed and verified: $($tool.Name)"
+                }
+            } else {
+                if ($installResult.Success) {
+                    Complete-DotWinProgress -ProgressId $toolProgressId -Status "Completed successfully" -Message "Successfully installed: $($tool.Name)"
+                } else {
+                    Complete-DotWinProgress -ProgressId $toolProgressId -Status "Failed" -Message "Tool installation failed: $($installResult.Error)"
                 }
             }
             
             $installResults += $executionResult
         }
         
-        Write-Progress -Activity "Installing System Tools" -Completed
-        
-        # Calculate total duration
+        # Calculate total duration and metrics
         $endTime = Get-Date
         $totalDuration = $endTime - $startTime
         
@@ -524,12 +556,30 @@ process {
             $result.Duration = $totalDuration
         }
         
-        # Summary
+        # Summary metrics
         $successCount = ($installResults | Where-Object { $_.Success }).Count
         $failureCount = ($installResults | Where-Object { -not $_.Success }).Count
         
-        Write-Information "System tools installation completed: $successCount successful, $failureCount failed"
+        $summaryMetrics = @{
+            TotalTools = $installResults.Count
+            SuccessfulInstalls = $successCount
+            FailedInstalls = $failureCount
+            TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
+            AverageInstallDuration = if ($installResults.Count -gt 0) {
+                $durations = $installResults | ForEach-Object { $_.Duration.TotalSeconds }
+                [Math]::Round(($durations | Measure-Object -Average).Average, 2)
+            } else { 0 }
+            InstallationSource = $Source
+            ToolCategory = $ToolCategory
+        }
         
+        $summaryMessage = "System tools installation completed: $successCount successful, $failureCount failed (Total: $($installResults.Count) tools, Duration: $($summaryMetrics.TotalDurationSeconds)s)"
+
+        Write-DotWinProgress -ProgressId $masterProgressId -Status "Finalizing installation..." -PercentComplete 95
+        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
+
+        Write-DotWinLog "System tools installation completed: $successCount successful, $failureCount failed" -Level Information -ShowWithProgress
+
         return $installResults
     }
     catch {
@@ -541,12 +591,13 @@ process {
         $errorResult.ItemType = "SystemTool"
         $errorResult.Duration = (Get-Date) - $startTime
         
-        Write-Error $_.Exception.Message
+        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "System tools installation failed: $($_.Exception.Message)"
+        Write-DotWinLog $_.Exception.Message -Level Error -ShowWithProgress
         return $errorResult
     }
 }
 
     end {
-        Write-Verbose "System tools installation process completed."
+        Write-DotWinLog "System tools installation process completed." -Level Verbose
     }
 }
