@@ -61,16 +61,20 @@ class DotWinExecutionResult {
     [string]$Message
     [hashtable]$Data
     [string]$ItemName
+    [string]$ItemType
     [hashtable]$Changes
     [DateTime]$Timestamp
+    [TimeSpan]$Duration
 
     DotWinExecutionResult() {
         $this.Success = $false
         $this.Message = ""
         $this.Data = @{}
         $this.ItemName = ""
+        $this.ItemType = ""
         $this.Changes = @{}
         $this.Timestamp = Get-Date
+        $this.Duration = [TimeSpan]::Zero
     }
 
     DotWinExecutionResult([bool]$success, [string]$message, [hashtable]$data) {
@@ -78,8 +82,10 @@ class DotWinExecutionResult {
         $this.Message = $message
         $this.Data = $data
         $this.ItemName = ""
+        $this.ItemType = ""
         $this.Changes = @{}
         $this.Timestamp = Get-Date
+        $this.Duration = [TimeSpan]::Zero
     }
 
     DotWinExecutionResult([bool]$success, [string]$itemName, [string]$message) {
@@ -87,8 +93,10 @@ class DotWinExecutionResult {
         $this.ItemName = $itemName
         $this.Message = $message
         $this.Data = @{}
+        $this.ItemType = ""
         $this.Changes = @{}
         $this.Timestamp = Get-Date
+        $this.Duration = [TimeSpan]::Zero
     }
 }
 
@@ -494,10 +502,16 @@ class DotWinWindowsTerminal : DotWinConfigurationItem {
 class DotWinBloatwareRemoval : DotWinConfigurationItem {
     [array]$BloatwareList
     [array]$RemovedItems
+    [bool]$IncludeServices
+    [bool]$IncludeScheduledTasks
+    [bool]$PreserveUserData
 
     DotWinBloatwareRemoval([string]$name) : base($name) {
         $this.BloatwareList = @()
         $this.RemovedItems = @()
+        $this.IncludeServices = $false
+        $this.IncludeScheduledTasks = $false
+        $this.PreserveUserData = $false
     }
 
     [bool] Test() {
@@ -513,6 +527,9 @@ class DotWinBloatwareRemoval : DotWinConfigurationItem {
         return @{
             BloatwareList = $this.BloatwareList
             RemovedItems = $this.RemovedItems
+            IncludeServices = $this.IncludeServices
+            IncludeScheduledTasks = $this.IncludeScheduledTasks
+            PreserveUserData = $this.PreserveUserData
         }
     }
 }
@@ -942,7 +959,7 @@ class DotWinRecommendationPlugin : DotWinPlugin {
         $this.RecommendationRules[$category][$ruleName] = $rule
     }
 
-    [array] GenerateRecommendations([DotWinSystemProfiler]$profile) {
+    [array] GenerateRecommendations([DotWinSystemProfiler]$systemProfile) {
         throw "GenerateRecommendations method must be implemented by derived classes"
     }
 }
@@ -1176,5 +1193,97 @@ class DotWinConfigurationParser {
 
     [object] ParseFromJson([string]$json) {
         return @{ Items = @() }
+    }
+
+    [DotWinConfiguration] ParseFromFile([string]$filePath) {
+        # Validate file exists
+        if (-not (Test-Path $filePath)) {
+            throw "Configuration file not found: $filePath"
+        }
+
+        try {
+            # Read JSON content from file
+            $jsonContent = Get-Content -Path $filePath -Raw -ErrorAction Stop
+
+            # Parse JSON
+            $configData = $jsonContent | ConvertFrom-Json -ErrorAction Stop
+
+            # Create configuration object
+            $configuration = [DotWinConfiguration]::new()
+
+            # Set basic properties if they exist
+            if ($configData.Name) {
+                $configuration.Name = $configData.Name
+            }
+            if ($configData.Version) {
+                $configuration.Version = $configData.Version
+            }
+            if ($configData.Metadata) {
+                # Convert PSCustomObject to hashtable
+                $metadataHashtable = @{}
+                foreach ($property in $configData.Metadata.PSObject.Properties) {
+                    $metadataHashtable[$property.Name] = $property.Value
+                }
+                $configuration.Metadata = $metadataHashtable
+            }
+
+            # Process configuration items
+            if ($configData.Items) {
+                foreach ($itemData in $configData.Items) {
+                    try {
+                        # Determine the type class to create
+                        $itemType = $itemData.Type
+                        if ($this.TypeMappings.ContainsKey($itemType)) {
+                            $className = $this.TypeMappings[$itemType]
+
+                            # Create the configuration item
+                            $item = New-Object -TypeName $className -ArgumentList $itemData.Name
+
+                            # Set properties from the data
+                            if ($null -ne $itemData.Enabled) {
+                                $item.Enabled = $itemData.Enabled
+                            }
+                            if ($itemData.Description) {
+                                $item.Description = $itemData.Description
+                            }
+                            if ($itemData.Properties) {
+                                # Convert PSCustomObject to hashtable
+                                $propertiesHashtable = @{}
+                                foreach ($property in $itemData.Properties.PSObject.Properties) {
+                                    $propertiesHashtable[$property.Name] = $property.Value
+                                }
+                                $item.Properties = $propertiesHashtable
+                            }
+
+                            # Add type-specific properties
+                            foreach ($property in $itemData.PSObject.Properties) {
+                                if ($property.Name -notin @('Name', 'Type', 'Enabled', 'Description', 'Properties')) {
+                                    try {
+                                        if ($item.PSObject.Properties[$property.Name]) {
+                                            $item.($property.Name) = $property.Value
+                                        }
+                                    } catch {
+                                        # Ignore properties that can't be set
+                                        Write-Verbose "Could not set property $($property.Name): $($_.Exception.Message)"
+                                    }
+                                }
+                            }
+
+                            # Add item to configuration
+                            $configuration.AddItem($item)
+                        } else {
+                            Write-Warning "Unknown configuration item type: $itemType"
+                        }
+                    } catch {
+                        Write-Warning "Failed to parse configuration item '$($itemData.Name)': $($_.Exception.Message)"
+                    }
+                }
+            }
+
+            return $configuration
+
+        } catch {
+            throw "Failed to parse configuration file '$filePath': $($_.Exception.Message)"
+        }
     }
 }

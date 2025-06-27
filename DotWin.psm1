@@ -17,6 +17,13 @@
 
 # Import configuration classes using multiple approaches to ensure availability across all contexts
 try {
+    # Force clear any existing class definitions
+    if (Get-Command -Name 'Remove-TypeData' -ErrorAction SilentlyContinue) {
+        try {
+            Remove-TypeData -TypeName 'DotWinExecutionResult' -ErrorAction SilentlyContinue
+        } catch { }
+    }
+
     # Method 1: Load in global scope
     $global:ExecutionContext.InvokeCommand.InvokeScript($false, [scriptblock]::Create(". '$PSScriptRoot\Classes.ps1'"), $null, $null)
 
@@ -27,7 +34,25 @@ try {
     $classContent = Get-Content "$PSScriptRoot\Classes.ps1" -Raw
     Invoke-Expression $classContent
 
+    # Method 4: Force load in script scope
+    $ExecutionContext.InvokeCommand.InvokeScript($false, [scriptblock]::Create($classContent), $null, $null)
+
     Write-Verbose "DotWin classes loaded successfully using multiple methods"
+
+    # Verify the class was loaded correctly
+    try {
+        $testResult = [DotWinExecutionResult]::new()
+        if (-not ($testResult.PSObject.Properties.Name -contains 'ItemType')) {
+            throw "DotWinExecutionResult class missing ItemType property"
+        }
+        if (-not ($testResult.PSObject.Properties.Name -contains 'Duration')) {
+            throw "DotWinExecutionResult class missing Duration property"
+        }
+        Write-Verbose "DotWin classes validation successful"
+    } catch {
+        Write-Error "DotWin class validation failed: $($_.Exception.Message)"
+        throw
+    }
 } catch {
     Write-Error "Failed to load DotWin classes: $($_.Exception.Message)"
     throw
