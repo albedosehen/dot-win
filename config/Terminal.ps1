@@ -39,7 +39,7 @@ $script:DotWinTerminalThemes = @{
             defaultProfile = "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}"
             copyOnSelect = $true
             copyFormatting = $false
-            wordDelimiters = " ./\\()\"'-:,.;<>~!@#$%^&*|+=[]{}~?\u2502"
+            wordDelimiters = " ./\\()\""' -:,.;<>~!@#$%^&*|+=[]{}~?│"
             confirmCloseAllTabs = $true
             startOnUserLogin = $false
             launchMode = "default"
@@ -78,7 +78,7 @@ $script:DotWinTerminalThemes = @{
             defaultProfile = "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}"
             copyOnSelect = $true
             copyFormatting = $false
-            wordDelimiters = " ./\\()\"'-:,.;<>~!@#$%^&*|+=[]{}~?\u2502"
+            wordDelimiters = " ./\\()\""' -:,.;<>~!@#$%^&*|+=[]{}~?│"
             confirmCloseAllTabs = $true
             startOnUserLogin = $false
             launchMode = "default"
