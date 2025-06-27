@@ -201,7 +201,7 @@ function Install-Packages {
             ActuallyInstalled = $actuallyInstalled
             AlreadyInstalled = $alreadyInstalled
             TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
-            AveragePackageDuration = if ($results.Count -gt 0) { [Math]::Round(($results | Measure-Object -Property Duration -Average).Average.TotalSeconds, 2) } else { 0 }
+            AveragePackageDuration = if ($results.Count -gt 0) { [Math]::Round(($results | ForEach-Object { $_.Duration.TotalSeconds } | Measure-Object -Average).Average, 2) } else { 0 }
             PackagesPerSecond = $packagesPerSecond
             InstallationSource = $Source
             ParallelMode = $Parallel.IsPresent

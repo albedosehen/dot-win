@@ -268,7 +268,7 @@ function Install-Applications {
             SuccessfulApplications = $successCount
             FailedApplications = $failureCount
             TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
-            AverageApplicationDuration = if ($results.Count -gt 0) { [Math]::Round(($results | Measure-Object -Property Duration -Average).Average.TotalSeconds, 2) } else { 0 }
+            AverageApplicationDuration = if ($results.Count -gt 0) { [Math]::Round(($results | ForEach-Object { $_.Duration.TotalSeconds } | Measure-Object -Average).Average, 2) } else { 0 }
             ConfigurationApplied = ($results | Where-Object { $_.Changes.Configuration }).Count
             ShortcutsCreated = ($results | Where-Object { $_.Changes.Shortcuts }).Count
         }

@@ -319,7 +319,7 @@ function Invoke-DotWinConfiguration {
             SuccessfulItems = $successCount
             FailedItems = $failureCount
             TotalDurationSeconds = [Math]::Round($totalDuration.TotalSeconds, 2)
-            AverageItemDuration = if ($results.Count -gt 0) { [Math]::Round(($results | Measure-Object -Property Duration -Average).Average.TotalSeconds, 2) } else { 0 }
+            AverageItemDuration = if ($results.Count -gt 0) { [Math]::Round(($results | ForEach-Object { $_.Duration.TotalSeconds } | Measure-Object -Average).Average, 2) } else { 0 }
         }
         
         $summaryMessage = "Configuration application completed: $successCount successful, $failureCount failed (Total: $($results.Count) items, Duration: $($summaryMetrics.TotalDurationSeconds)s)"
