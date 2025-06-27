@@ -21,6 +21,9 @@ $script:DotWinProfileConfigurations = @{
             @{ Name = "Pester"; MinimumVersion = "5.0.0" }
         )
         Aliases = @{
+            ".." = "Set-Location .."
+            "..." = "Set-Location ../.."
+            "...." = "Set-Location ../../.."
             "ll" = "Get-ChildItem -Force"
             "la" = "Get-ChildItem -Force -Hidden"
             "grep" = "Select-String"
@@ -36,7 +39,7 @@ $script:DotWinProfileConfigurations = @{
             "ga" = "git add"
             "gc" = "git commit"
             "gd" = "git diff"
-        )
+        }
         Functions = @{
             "Get-DirectorySize" = @"
 function Get-DirectorySize {
@@ -79,7 +82,7 @@ function Find-File {
 }
 Set-Alias -Name "ff" -Value "Find-File"
 "@
-        )
+        }
         Prompt = @"
 function prompt {
     `$location = Get-Location
@@ -139,7 +142,7 @@ function prompt {
             "grep" = "Select-String"
             "which" = "Get-Command"
             "touch" = "New-Item -ItemType File"
-        )
+        }
         Functions = @{
             "Test-Administrator" = @"
 function Test-Administrator {
@@ -196,7 +199,7 @@ function prompt {
             "sysinfo" = "Get-ComputerInfo"
             "processes" = "Get-Process | Sort-Object CPU -Descending | Select-Object -First 10"
             "services" = "Get-Service | Where-Object Status -eq Running"
-        )
+        }
         Functions = @{
             "Get-DirectorySize" = @"
 function Get-DirectorySize {
@@ -261,7 +264,7 @@ function Test-Port {
     }
 }
 "@
-        )
+        }
         Prompt = @"
 function prompt {
     `$location = Get-Location
@@ -368,7 +371,7 @@ $script:DotWinProfileTemplates = @{
             "# VS Code-specific configuration",
             "if (`$env:TERM_PROGRAM -eq 'vscode') {",
             "    # VS Code specific settings",
-            "    `$PSStyle.FileInfo.Directory = \"`e[34;1m\"",
+            "    `$PSStyle.FileInfo.Directory = `"`e[34;1m`"",
             "}"
         )
     }
@@ -379,8 +382,8 @@ $script:DotWinProfileTemplates = @{
             "# Windows Terminal-specific configuration",
             "if (`$env:WT_SESSION) {",
             "    # Windows Terminal specific settings",
-            "    `$PSStyle.FileInfo.Directory = \"`e[94m\"",
-            "    `$PSStyle.FileInfo.Executable = \"`e[92m\"",
+            "    `$PSStyle.FileInfo.Directory = `"`e[94m`"",
+            "    `$PSStyle.FileInfo.Executable = `"`e[92m`"",
             "}"
         )
     }

@@ -554,12 +554,12 @@ function Find-Package {
         $categoryPackages = $script:DotWinPackageCategories[$categoryName].Packages
         
         if ($Exact) {
-            $matches = $categoryPackages | Where-Object { $_.Id -eq $Query -or $_.Name -eq $Query }
+            $matched = $categoryPackages | Where-Object { $_.Id -eq $Query -or $_.Name -eq $Query }
         } else {
-            $matches = $categoryPackages | Where-Object { $_.Id -like "*$Query*" -or $_.Name -like "*$Query*" -or $_.Description -like "*$Query*" }
+            $matched = $categoryPackages | Where-Object { $_.Id -like "*$Query*" -or $_.Name -like "*$Query*" -or $_.Description -like "*$Query*" }
         }
         
-        $matchingPackages += $matches
+        $matchingPackages += $matched
     }
     
     return $matchingPackages

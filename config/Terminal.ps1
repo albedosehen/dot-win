@@ -114,7 +114,7 @@ $script:DotWinTerminalThemes = @{
         }
         Settings = @{
             theme = "dark"
-            defaultProfile = "{574e775e-4f2a-5b96-ac1e-a2962a402336}"  # PowerShell 7
+            defaultProfile = "{574e775e-4f2a-5b96-ac1e-a2962a402336}"  # PowerShell Core
             copyOnSelect = $true
             copyFormatting = $false
             confirmCloseAllTabs = $true
@@ -166,9 +166,9 @@ $script:DotWinTerminalThemes = @{
 
 # Profile configurations for different shells
 $script:DotWinTerminalProfiles = @{
-    'PowerShell' = @{
+    'PowerShell-Windows' = @{
         guid = "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}"
-        name = "PowerShell"
+        name = "Windows PowerShell"
         commandline = "powershell.exe"
         icon = "ms-appx:///ProfileIcons/{61c54bbd-c2c6-5271-96e7-009a87ff44bf}.png"
         startingDirectory = "%USERPROFILE%"
@@ -186,7 +186,27 @@ $script:DotWinTerminalProfiles = @{
         historySize = 9001
     }
     
-    'PowerShell7' = @{
+    'PowerShell-Core' = @{
+        guid = "{574e775e-4f2a-5b96-ac1e-a2962a402336}"
+        name = "PowerShell"
+        commandline = "pwsh.exe"
+        icon = "ms-appx:///ProfileIcons/{574e775e-4f2a-5b96-ac1e-a2962a402336}.png"
+        startingDirectory = "%USERPROFILE%"
+        fontFace = "Cascadia Code"
+        fontSize = 12
+        cursorShape = "bar"
+        useAcrylic = $false
+        acrylicOpacity = 0.8
+        backgroundImage = $null
+        backgroundImageOpacity = 0.3
+        backgroundImageStretchMode = "uniformToFill"
+        backgroundImageAlignment = "center"
+        scrollbarState = "visible"
+        snapOnInput = $true
+        historySize = 9001
+    }
+
+    'PowerShell-Seven' = @{
         guid = "{574e775e-4f2a-5b96-ac1e-a2962a402336}"
         name = "PowerShell 7"
         commandline = "pwsh.exe"
@@ -593,16 +613,22 @@ function Test-TerminalProfileAvailability {
         $reason = ""
         
         switch ($profileName) {
-            'PowerShell' {
+            'PowerShell-Windows' {
                 if (-not (Get-Command "powershell.exe" -ErrorAction SilentlyContinue)) {
                     $isAvailable = $false
                     $reason = "PowerShell not found"
                 }
             }
-            'PowerShell7' {
+            'PowerShell-Core' {
                 if (-not (Get-Command "pwsh.exe" -ErrorAction SilentlyContinue)) {
                     $isAvailable = $false
-                    $reason = "PowerShell 7 not installed"
+                    $reason = "PowerShell Core not installed"
+                }
+            }
+            'PowerShell-Seven' {
+                if (-not (Get-Command "pwsh.exe" -ErrorAction SilentlyContinue)) {
+                    $isAvailable = $false
+                    $reason = "PowerShell Seven (Preview) not installed"
                 }
             }
             'CommandPrompt' {

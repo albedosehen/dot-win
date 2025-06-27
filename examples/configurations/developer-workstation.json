@@ -1,6 +1,6 @@
 {
   "name": "Developer Workstation",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "description": "Complete development environment setup with modern tools and WSL integration",
   "metadata": {
     "author": "DotWin Team",
@@ -54,12 +54,12 @@
       }
     },
     {
-      "name": "WSL Ubuntu Development Environment",
+      "name": "WSL OpenSUSE (Tumbleweed) Development Environment",
       "type": "WSLConfiguration",
-      "description": "Ubuntu-based development environment with essential packages",
+      "description": "OpenSUSE-based development environment with essential packages",
       "enabled": true,
       "properties": {
-        "distribution": "Ubuntu-22.04",
+        "distribution": "openSUSE-Tumbleweed",
         "defaultUser": "developer",
         "settings": {
           "memory": "8GB",
@@ -96,13 +96,11 @@
       "enabled": true,
       "properties": {
         "features": [
-          "Microsoft-Windows-Subsystem-Linux",
           "VirtualMachinePlatform",
-          "Microsoft-Hyper-V-All",
-          "Containers",
-          "IIS-WebServerRole",
-          "IIS-HttpCompressionStatic",
-          "IIS-HttpCompressionDynamic"
+          "Microsoft-Windows-Subsystem-Linux",
+          "Windows-TIFF-IFilter",
+          "WorkFolders-Client",
+          "DirectoryServices-ADAM-Client"
         ]
       }
     },
@@ -185,19 +183,14 @@
         "fontFace": "Cascadia Code PL",
         "profiles": [
           {
-            "name": "PowerShell 7",
+            "name": "PowerShell",
             "commandline": "pwsh.exe",
             "colorScheme": "Campbell Powershell"
           },
           {
-            "name": "Ubuntu WSL",
-            "commandline": "wsl.exe -d Ubuntu-22.04",
+            "name": "OpenSUSE Tumbleweed WSL",
+            "commandline": "wsl.exe -d openSUSE-Tumbleweed",
             "colorScheme": "Ubuntu"
-          },
-          {
-            "name": "Developer Command Prompt",
-            "commandline": "cmd.exe /k \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\Common7\\Tools\\VsDevCmd.bat\"",
-            "colorScheme": "Campbell"
           }
         ]
       }

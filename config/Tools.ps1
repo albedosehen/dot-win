@@ -544,12 +544,12 @@ function Find-SystemTool {
         $categoryTools = $script:DotWinSystemTools[$categoryName].Tools
         
         if ($Exact) {
-            $matches = $categoryTools | Where-Object { $_.Name -eq $Query }
+            $matched = $categoryTools | Where-Object { $_.Name -eq $Query }
         } else {
-            $matches = $categoryTools | Where-Object { $_.Name -like "*$Query*" -or $_.Description -like "*$Query*" }
+            $matched = $categoryTools | Where-Object { $_.Name -like "*$Query*" -or $_.Description -like "*$Query*" }
         }
         
-        $matchingTools += $matches
+        $matchingTools += $matched
     }
     
     return $matchingTools
