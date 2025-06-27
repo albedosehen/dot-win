@@ -72,7 +72,9 @@ $PublicFunctions = @(
     'Get-DotWinPlugin',
     'Unregister-DotWinPlugin',
     'Enable-DotWinPlugin',
-    'Disable-DotWinPlugin'
+    'Disable-DotWinPlugin',
+    'Test-DotWinEnvironment',
+    'Get-DotWinModuleInfo'
 )
 
 foreach ($Function in $PublicFunctions) {

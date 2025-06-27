@@ -23,7 +23,7 @@
 	GUID = '112e76d3-23b6-4196-a457-7c652748db98'
 	
 	# Author of this module
-	Author = 'shonp'
+	Author = 'Shon Thomas'
 	
 	# Company or vendor of this module
 	CompanyName = ''
@@ -100,7 +100,9 @@
 	    'Get-DotWinPlugin',
 	    'Unregister-DotWinPlugin',
 	    'Enable-DotWinPlugin',
-	    'Disable-DotWinPlugin'
+	    'Disable-DotWinPlugin',
+	    'Test-DotWinEnvironment',
+	    'Get-DotWinModuleInfo'
 	)
 	
 	# Cmdlets to export from this module
