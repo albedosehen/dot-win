@@ -527,11 +527,11 @@ function Build-TerminalSettings {
     # Add profiles
     $profileList = @()
     foreach ($profileName in $config.Profiles) {
-        $profile = Get-TerminalProfile -ProfileName $profileName
-        if ($profile) {
+        $terminalProfile = Get-TerminalProfile -ProfileName $profileName
+        if ($terminalProfile) {
             # Set color scheme for profile
-            $profile.colorScheme = $config.Theme.ColorScheme.name
-            $profileList += $profile
+            $terminalProfile.colorScheme = $config.Theme.ColorScheme.name
+            $profileList += $terminalProfile
         }
     }
     
@@ -580,8 +580,8 @@ function Test-TerminalProfileAvailability {
     $availability = @{}
     
     foreach ($profileName in $ProfileNames) {
-        $profile = Get-TerminalProfile -ProfileName $profileName
-        if (-not $profile) {
+        $terminalProfile = Get-TerminalProfile -ProfileName $profileName
+        if (-not $terminalProfile) {
             $availability[$profileName] = @{
                 Available = $false
                 Reason = "Profile configuration not found"

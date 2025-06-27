@@ -61,7 +61,10 @@ function ConvertTo-DotWinConfiguration {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(ValueFromPipeline = $true)]
+        [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+        [object]$InputObject,
+
+        [Parameter()]
         [DotWinSystemProfiler]$SystemProfile,
 
         [Parameter()]
@@ -103,9 +106,40 @@ function ConvertTo-DotWinConfiguration {
         if ($OutputPath -and (Test-Path $OutputPath) -and -not $Force) {
             throw "Configuration file '$OutputPath' already exists. Use -Force to overwrite."
         }
+
+        # Initialize collections for pipeline input
+        $pipelineRecommendations = @()
     }
 
     process {
+        # Handle different types of pipeline input
+        if ($InputObject) {
+            if ($InputObject -is [array] -and $InputObject.Count -gt 0 -and $InputObject[0].GetType().Name -eq 'DotWinRecommendation') {
+                # Array of recommendations from pipeline
+                Write-DotWinLog "Received $($InputObject.Count) recommendations from pipeline" -Level Information
+                $pipelineRecommendations += $InputObject
+                return  # Continue processing in end block
+            } elseif ($InputObject.GetType().Name -eq 'DotWinRecommendation') {
+                # Single recommendation from pipeline
+                $title = if ($InputObject.PSObject.Properties.Name -contains 'Title') { $InputObject.Title } else { "Unknown Recommendation" }
+                Write-DotWinLog "Received recommendation from pipeline: $title" -Level Information
+                $pipelineRecommendations += $InputObject
+                return  # Continue processing in end block
+            } elseif ($InputObject.GetType().Name -eq 'DotWinSystemProfiler') {
+                # System profile from pipeline
+                Write-DotWinLog "Received SystemProfile from pipeline" -Level Information
+                $SystemProfile = $InputObject
+            }
+        }
+
+        # If we have pipeline recommendations, merge them with explicit recommendations
+        if ($pipelineRecommendations.Count -gt 0) {
+            if ($Recommendations) {
+                $Recommendations = $Recommendations + $pipelineRecommendations
+            } else {
+                $Recommendations = $pipelineRecommendations
+            }
+        }
         try {
             # Create new configuration object
             Write-DotWinLog "Creating configuration: $ConfigurationName" -Level Information
@@ -153,61 +187,90 @@ function ConvertTo-DotWinConfiguration {
                         $configItem = $null
                         
                         # Convert based on implementation type
-                        switch ($recommendation.Implementation.Type) {
-                            "Package" {
-                                $configItem = [DotWinConfigurationItem]::new($recommendation.Title, "Packages")
-                                $configItem.Properties = @{
-                                    packages = @($recommendation.Implementation.PackageId)
-                                    source = $recommendation.Implementation.Source
-                                    acceptLicenses = $true
+                        if ($recommendation.PSObject.Properties.Name -contains 'Implementation' -and $recommendation.Implementation) {
+                            switch ($recommendation.Implementation.Type) {
+                                "Package" {
+                                    $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Package Configuration" }
+                                    $configItem = [DotWinConfigurationItem]::new($title, "Packages")
+                                    $configItem.Properties = @{
+                                        packages = @($recommendation.Implementation.PackageId)
+                                        source = $recommendation.Implementation.Source
+                                        acceptLicenses = $true
+                                    }
+                                }
+                                "WindowsFeature" {
+                                    $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Windows Feature Configuration" }
+                                    $configItem = [DotWinConfigurationItem]::new($title, "WindowsFeatures")
+                                    $configItem.Properties = @{
+                                        features = @($recommendation.Implementation.FeatureName)
+                                        enabled = $recommendation.Implementation.ShouldEnable
+                                    }
+                                }
+                                "Registry" {
+                                    $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Registry Configuration" }
+                                    $configItem = [DotWinConfigurationItem]::new($title, "RegistryConfiguration")
+                                    $configItem.Properties = @{
+                                        settings = @($recommendation.Implementation.RegistrySettings)
+                                    }
+                                }
+                                "SystemTools" {
+                                    $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "System Tools Configuration" }
+                                    $configItem = [DotWinConfigurationItem]::new($title, "SystemTools")
+                                    $configItem.Properties = @{
+                                        category = if ($recommendation.PSObject.Properties.Name -contains 'Category') { $recommendation.Category } else { "General" }
+                                        tools = @($recommendation.Implementation.Tools)
+                                    }
+                                }
+                                default {
+                                    # Generic configuration item
+                                    $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Generic Configuration" }
+                                    $configItem = [DotWinConfigurationItem]::new($title, "Generic")
+                                    $configItem.Properties = $recommendation.Implementation
                                 }
                             }
-                            "WindowsFeature" {
-                                $configItem = [DotWinConfigurationItem]::new($recommendation.Title, "WindowsFeatures")
-                                $configItem.Properties = @{
-                                    features = @($recommendation.Implementation.FeatureName)
-                                    enabled = $recommendation.Implementation.ShouldEnable
-                                }
-                            }
-                            "Registry" {
-                                $configItem = [DotWinConfigurationItem]::new($recommendation.Title, "RegistryConfiguration")
-                                $configItem.Properties = @{
-                                    settings = @($recommendation.Implementation.RegistrySettings)
-                                }
-                            }
-                            "SystemTools" {
-                                $configItem = [DotWinConfigurationItem]::new($recommendation.Title, "SystemTools")
-                                $configItem.Properties = @{
-                                    category = $recommendation.Category
-                                    tools = @($recommendation.Implementation.Tools)
-                                }
-                            }
-                            default {
-                                # Generic configuration item
-                                $configItem = [DotWinConfigurationItem]::new($recommendation.Title, "Generic")
-                                $configItem.Properties = $recommendation.Implementation
+                        } else {
+                            # Create a basic configuration item if no implementation details
+                            $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Basic Configuration" }
+                            $configItem = [DotWinConfigurationItem]::new($title, "Generic")
+                            $configItem.Properties = @{
+                                type = "Basic"
+                                source = "Recommendation"
                             }
                         }
 
                         if ($configItem) {
-                            $configItem.Description = $recommendation.Description
+                            if ($recommendation.PSObject.Properties.Name -contains 'Description') {
+                                $configItem.Description = $recommendation.Description
+                            } else {
+                                $configItem.Description = "Generated from recommendation"
+                            }
                             $configItem.Enabled = $true
                             
                             # Add recommendation metadata
                             if ($IncludeMetadata) {
-                                $configItem.Properties["RecommendationMetadata"] = @{
-                                    Priority = $recommendation.Priority
-                                    Category = $recommendation.Category
-                                    ConfidenceScore = $recommendation.ConfidenceScore
-                                    Prerequisites = $recommendation.Prerequisites
+                                $metadata = @{}
+                                if ($recommendation.PSObject.Properties.Name -contains 'Priority') {
+                                    $metadata.Priority = $recommendation.Priority
                                 }
+                                if ($recommendation.PSObject.Properties.Name -contains 'Category') {
+                                    $metadata.Category = $recommendation.Category
+                                }
+                                if ($recommendation.PSObject.Properties.Name -contains 'ConfidenceScore') {
+                                    $metadata.ConfidenceScore = $recommendation.ConfidenceScore
+                                }
+                                if ($recommendation.PSObject.Properties.Name -contains 'Prerequisites') {
+                                    $metadata.Prerequisites = $recommendation.Prerequisites
+                                }
+                                $configItem.Properties["RecommendationMetadata"] = $metadata
                             }
                             
                             $configuration.AddItem($configItem)
-                            Write-DotWinLog "Added configuration item: $($recommendation.Title)" -Level Verbose
+                            $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
+                            Write-DotWinLog "Added configuration item: $title" -Level Verbose
                         }
                     } catch {
-                        Write-DotWinLog "Failed to convert recommendation '$($recommendation.Title)': $($_.Exception.Message)" -Level Warning
+                        $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
+                        Write-DotWinLog "Failed to convert recommendation '$title': $($_.Exception.Message)" -Level Warning
                     }
                 }
             }
@@ -297,7 +360,7 @@ function ConvertTo-DotWinConfiguration {
                     $jsonItem = @{
                         name = $item.Name
                         type = $item.Type
-                        description = $item.Description
+                        description = if ($item.PSObject.Properties.Name -contains 'Description') { $item.Description } else { "Configuration item" }
                         enabled = $item.Enabled
                         properties = $item.Properties
                     }
@@ -337,6 +400,222 @@ function ConvertTo-DotWinConfiguration {
     }
 
     end {
+        # Process accumulated pipeline recommendations if any
+        if ($pipelineRecommendations.Count -gt 0 -and -not $Recommendations) {
+            Write-DotWinLog "Processing $($pipelineRecommendations.Count) recommendations from pipeline in end block" -Level Information
+            $Recommendations = $pipelineRecommendations
+
+            # Re-run the main processing logic with accumulated recommendations
+            try {
+                # Create new configuration object
+                Write-DotWinLog "Creating configuration: $ConfigurationName" -Level Information
+                $configuration = [DotWinConfiguration]::new($ConfigurationName)
+
+                # Safely set properties
+                if ($configuration.PSObject.Properties.Name -contains 'Version') {
+                    $configuration.Version = "1.0.0"
+                }
+                if ($configuration.PSObject.Properties.Name -contains 'Description') {
+                    $configuration.Description = "Auto-generated configuration from system profile and recommendations"
+                }
+
+                # Add metadata if requested
+                if ($IncludeMetadata) {
+                    $configuration.Metadata["GeneratedAt"] = Get-Date
+                    $configuration.Metadata["GeneratedBy"] = "ConvertTo-DotWinConfiguration"
+                    $configuration.Metadata["DotWinVersion"] = (Get-Module DotWin).Version.ToString()
+
+                    if ($SystemProfile) {
+                        $configuration.Metadata["SourceProfile"] = @{
+                            ProfileVersion = $SystemProfile.ProfileVersion
+                            LastProfiled = $SystemProfile.LastProfiled
+                            HardwareCategory = $SystemProfile.Hardware.GetHardwareCategory()
+                            UserType = $SystemProfile.Software.GetUserType()
+                            TechnicalLevel = $SystemProfile.User.GetTechnicalLevel()
+                        }
+                    }
+                }
+
+                # Process recommendations if provided
+                if ($Recommendations -and $Recommendations.Count -gt 0) {
+                    Write-DotWinLog "Processing $($Recommendations.Count) recommendations" -Level Information
+
+                    # Filter recommendations by priority and category
+                    $filteredRecommendations = $Recommendations
+
+                    if ($Priority) {
+                        $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Priority -in $Priority }
+                        Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                    }
+
+                    if ($Category) {
+                        $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Category -in $Category }
+                        Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                    }
+
+                    # Convert recommendations to configuration items
+                    foreach ($recommendation in $filteredRecommendations) {
+                        try {
+                            $configItem = $null
+
+                            # Convert based on implementation type
+                            if ($recommendation.PSObject.Properties.Name -contains 'Implementation' -and $recommendation.Implementation) {
+                                switch ($recommendation.Implementation.Type) {
+                                    "Package" {
+                                        $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Package Configuration" }
+                                        $configItem = [DotWinConfigurationItem]::new($title, "Packages")
+                                        $configItem.Properties = @{
+                                            packages = @($recommendation.Implementation.PackageId)
+                                            source = @($recommendation.Implementation.Source)
+                                            acceptLicenses = $true
+                                        }
+                                    }
+                                    "WindowsFeature" {
+                                        $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Windows Feature Configuration" }
+                                        $configItem = [DotWinConfigurationItem]::new($title, "WindowsFeatures")
+                                        $configItem.Properties = @{
+                                            features = @($recommendation.Implementation.FeatureName)
+                                            enabled = $recommendation.Implementation.ShouldEnable
+                                        }
+                                    }
+                                    "Registry" {
+                                        $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Registry Configuration" }
+                                        $configItem = [DotWinConfigurationItem]::new($title, "RegistryConfiguration")
+                                        $configItem.Properties = @{
+                                            settings = @($recommendation.Implementation.RegistrySettings)
+                                        }
+                                    }
+                                    "SystemTools" {
+                                        $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "System Tools Configuration" }
+                                        $configItem = [DotWinConfigurationItem]::new($title, "SystemTools")
+                                        $configItem.Properties = @{
+                                            category = if ($recommendation.PSObject.Properties.Name -contains 'Category') { $recommendation.Category } else { "General" }
+                                            tools = @($recommendation.Implementation.Tools)
+                                        }
+                                    }
+                                    default {
+                                        # Generic configuration item
+                                        $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Generic Configuration" }
+                                        $configItem = [DotWinConfigurationItem]::new($title, "Generic")
+                                        $configItem.Properties = $recommendation.Implementation
+                                    }
+                                }
+                            } else {
+                                # Create a basic configuration item if no implementation details
+                                $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Basic Configuration" }
+                                $configItem = [DotWinConfigurationItem]::new($title, "Generic")
+                                $configItem.Properties = @{
+                                    type = "Basic"
+                                    source = "Recommendation"
+                                }
+                            }
+
+                            if ($configItem) {
+                                if ($recommendation.PSObject.Properties.Name -contains 'Description') {
+                                    $configItem.Description = $recommendation.Description
+                                } else {
+                                    $configItem.Description = "Generated from recommendation"
+                                }
+                                $configItem.Enabled = $true
+
+                                # Add recommendation metadata
+                                if ($IncludeMetadata) {
+                                    $metadata = @{}
+                                    if ($recommendation.PSObject.Properties.Name -contains 'Priority') {
+                                        $metadata.Priority = $recommendation.Priority
+                                    }
+                                    if ($recommendation.PSObject.Properties.Name -contains 'Category') {
+                                        $metadata.Category = $recommendation.Category
+                                    }
+                                    if ($recommendation.PSObject.Properties.Name -contains 'ConfidenceScore') {
+                                        $metadata.ConfidenceScore = $recommendation.ConfidenceScore
+                                    }
+                                    if ($recommendation.PSObject.Properties.Name -contains 'Prerequisites') {
+                                        $metadata.Prerequisites = $recommendation.Prerequisites
+                                    }
+                                    $configItem.Properties["RecommendationMetadata"] = $metadata
+                                }
+
+                                $configuration.AddItem($configItem)
+                                $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
+                                Write-DotWinLog "Added configuration item: $title" -Level Verbose
+                            }
+                        } catch {
+                            $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
+                            Write-DotWinLog "Failed to convert recommendation '$title': $($_.Exception.Message)" -Level Warning
+                        }
+                    }
+                }
+
+                # Save to file if OutputPath is specified
+                if ($OutputPath) {
+                    Write-DotWinLog "Saving configuration to: $OutputPath" -Level Information
+
+                    # Create the JSON structure that matches the example configurations
+                    $jsonConfig = @{
+                        name = $configuration.Name
+                        version = $configuration.Version
+                        description = $configuration.Description
+                        metadata = @{
+                            author = "DotWin Auto-Generator"
+                            category = "Auto-Generated"
+                            lastUpdated = (Get-Date).ToString("yyyy-MM-dd")
+                            generatedBy = "ConvertTo-DotWinConfiguration"
+                        }
+                        items = @()
+                    }
+
+                    # Add metadata if requested
+                    if ($IncludeMetadata) {
+                        foreach ($key in $configuration.Metadata.Keys) {
+                            $jsonConfig.metadata[$key] = $configuration.Metadata[$key]
+                        }
+                    }
+
+                    # Convert configuration items to JSON format
+                    foreach ($item in $configuration.Items) {
+                        $jsonItem = @{
+                            name = $item.Name
+                            type = $item.Type
+                            description = if ($item.PSObject.Properties.Name -contains 'Description') { $item.Description } else { "Configuration item" }
+                            enabled = $item.Enabled
+                            properties = $item.Properties
+                        }
+                        $jsonConfig.items += $jsonItem
+                    }
+
+                    # Add validation section
+                    $jsonConfig.validation = @{
+                        tests = @()
+                    }
+
+                    # Add post-install instructions
+                    $jsonConfig.postInstallInstructions = @(
+                        "Review the applied configuration",
+                        "Restart your computer if required",
+                        "Test the configured applications and settings"
+                    )
+
+                    # Convert to JSON and save
+                    $jsonContent = $jsonConfig | ConvertTo-Json -Depth 10
+                    Set-Content -Path $OutputPath -Value $jsonContent -Encoding UTF8
+
+                    Write-DotWinLog "Configuration saved successfully to: $OutputPath" -Level Information
+                    Write-DotWinLog "Configuration contains $($configuration.Items.Count) items" -Level Information
+
+                    return $OutputPath
+                } else {
+                    # Return the configuration object
+                    Write-DotWinLog "Returning configuration object with $($configuration.Items.Count) items" -Level Information
+                    return $configuration
+                }
+
+            } catch {
+                Write-DotWinLog "Error during configuration conversion: $($_.Exception.Message)" -Level Error
+                throw
+            }
+        }
+
         $totalDuration = (Get-Date) - $startTime
         Write-DotWinLog "Configuration conversion completed in $($totalDuration.TotalSeconds) seconds" -Level Information
     }

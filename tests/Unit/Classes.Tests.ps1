@@ -942,7 +942,7 @@ Describe "DotWinPlugin Classes" -Tag @('Unit', 'Classes') {
 
         It "Should register recommendation rules" {
             $plugin = [DotWinRecommendationPlugin]::new('RecommendPlugin', '1.0.0')
-            $rule = { param($profile) return @() }
+            $rule = { param($systemProfile) return @() }
 
             $plugin.RegisterRule('Performance', 'TestRule', $rule)
 
@@ -952,9 +952,9 @@ Describe "DotWinPlugin Classes" -Tag @('Unit', 'Classes') {
 
         It "Should throw on GenerateRecommendations call" {
             $plugin = [DotWinRecommendationPlugin]::new()
-            $profile = [DotWinSystemProfiler]::new()
+            $systemProfile = [DotWinSystemProfiler]::new()
 
-            { $plugin.GenerateRecommendations($profile) } | Should -Throw "*must be implemented*"
+            { $plugin.GenerateRecommendations($systemProfile) } | Should -Throw "*must be implemented*"
         }
     }
 }
@@ -994,6 +994,7 @@ Describe "DotWinPluginManager" -Tag @('Unit', 'Classes') {
         BeforeEach {
             $manager = [DotWinPluginManager]::new()
             $plugin = New-MockPlugin -Name 'TestPlugin' -Version '1.0.0'
+            $null = $manager, $plugin # PSAnalyzer IsDeclaredVarsMoreThanAssignments cannot see that these two variables are used outside the BeforeEach script block.
         }
 
         It "Should register valid plugins" {

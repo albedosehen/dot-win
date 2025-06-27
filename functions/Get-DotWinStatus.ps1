@@ -133,6 +133,18 @@ function Get-DotWinStatus {
                     }
                     
                     $status.ConfigurationStatus.SystemInfo = $systemInfo
+
+                    # Generate a basic system profile for pipeline compatibility
+                    Write-DotWinLog "Generating system profile for pipeline compatibility" -Level Verbose
+                    try {
+                        $systemProfile = Get-DotWinSystemProfile -ErrorAction SilentlyContinue
+                        if ($systemProfile) {
+                            $status.ConfigurationStatus.SystemProfile = $systemProfile
+                            Write-DotWinLog "System profile added to status for pipeline support" -Level Verbose
+                        }
+                    } catch {
+                        Write-DotWinLog "Could not generate system profile: $($_.Exception.Message)" -Level Verbose
+                    }
                 } catch {
                     Write-DotWinLog "Error gathering system information: $($_.Exception.Message)" -Level Warning
                     $status.ConfigurationStatus.SystemInfoError = $_.Exception.Message

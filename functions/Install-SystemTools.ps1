@@ -285,8 +285,8 @@ function Install-SystemTools {
                 
                 $process = Start-Process -FilePath 'winget' -ArgumentList $arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput 'winget_output.txt' -RedirectStandardError 'winget_error.txt'
                 
-                $output = if (Test-Path 'winget_output.txt') { Get-Content 'winget_output.txt' -Raw } else { '' }
-                $error = if (Test-Path 'winget_error.txt') { Get-Content 'winget_error.txt' -Raw } else { '' }
+                $commandOutput = if (Test-Path 'winget_output.txt') { Get-Content 'winget_output.txt' -Raw } else { '' }
+                $commandError = if (Test-Path 'winget_error.txt') { Get-Content 'winget_error.txt' -Raw } else { '' }
                 
                 # Clean up temp files
                 Remove-Item 'winget_output.txt', 'winget_error.txt' -ErrorAction SilentlyContinue
@@ -296,8 +296,8 @@ function Install-SystemTools {
                 return [PSCustomObject]@{
                     Success = $success
                     ExitCode = $process.ExitCode
-                    Output = $output
-                    Error = $error
+                    Output = $commandOutput
+                    Error = $commandError
                     Method = 'Winget'
                 }
             } else {
@@ -345,8 +345,8 @@ function Install-SystemTools {
                 
                 $process = Start-Process -FilePath 'choco' -ArgumentList $arguments -Wait -PassThru -NoNewWindow -RedirectStandardOutput 'choco_output.txt' -RedirectStandardError 'choco_error.txt'
                 
-                $output = if (Test-Path 'choco_output.txt') { Get-Content 'choco_output.txt' -Raw } else { '' }
-                $error = if (Test-Path 'choco_error.txt') { Get-Content 'choco_error.txt' -Raw } else { '' }
+                $commandOutput = if (Test-Path 'choco_output.txt') { Get-Content 'choco_output.txt' -Raw } else { '' }
+                $commandError = if (Test-Path 'choco_error.txt') { Get-Content 'choco_error.txt' -Raw } else { '' }
                 
                 # Clean up temp files
                 Remove-Item 'choco_output.txt', 'choco_error.txt' -ErrorAction SilentlyContinue
@@ -356,8 +356,8 @@ function Install-SystemTools {
                 return [PSCustomObject]@{
                     Success = $success
                     ExitCode = $process.ExitCode
-                    Output = $output
-                    Error = $error
+                    Output = $commandOutput
+                    Error = $commandError
                     Method = 'Chocolatey'
                 }
             } else {

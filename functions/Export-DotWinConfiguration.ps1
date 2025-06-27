@@ -83,6 +83,9 @@ function Export-DotWinConfiguration {
         })]
         [string]$OutputPath,
 
+        [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+        [object]$InputObject,
+
         [Parameter()]
         [string]$ConfigurationName = "Exported System Configuration",
 
@@ -129,6 +132,24 @@ function Export-DotWinConfiguration {
     }
 
     process {
+        # Handle pipeline input for system data
+        if ($InputObject) {
+            if ($InputObject.GetType().Name -eq 'DotWinSystemStatus') {
+                Write-DotWinLog "Received DotWinSystemStatus from pipeline, using system information" -Level Information
+                # Extract system information from status object
+                if ($InputObject.ConfigurationStatus -and $InputObject.ConfigurationStatus.SystemInfo) {
+                    $IncludeSettings = $true
+                    $IncludeFeatures = $true
+                    $IncludeMetadata = $true
+                }
+            } elseif ($InputObject.GetType().Name -eq 'DotWinSystemProfiler') {
+                Write-DotWinLog "Received DotWinSystemProfiler from pipeline" -Level Information
+                $IncludePackages = $true
+                $IncludeSettings = $true
+                $IncludeMetadata = $true
+            }
+        }
+
         try {
             if ($PSCmdlet.ShouldProcess($OutputPath, "Export system configuration")) {
                 

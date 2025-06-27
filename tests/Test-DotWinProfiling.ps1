@@ -300,16 +300,16 @@ function Test-IntegrationFunctions {
     
     try {
         # Test 1: Get-DotWinSystemProfile Function
-        $profile = Get-DotWinSystemProfile -Verbose:$false
-        $profileValid = $null -ne $profile -and $null -ne $profile.LastProfiled
+        $systemProfile = Get-DotWinSystemProfile -Verbose:$false
+        $profileValid = $null -ne $systemProfile -and $null -ne $systemProfile.LastProfiled
         Write-TestResult -TestName "Get-DotWinSystemProfile Function" -Category "Integration" -Passed $profileValid -Details @{
-            ProfileVersion = $profile.ProfileVersion
-            LastProfiled = $profile.LastProfiled
+            ProfileVersion = $systemProfile.ProfileVersion
+            LastProfiled = $systemProfile.LastProfiled
         }
         
         # Test 2: Get-DotWinRecommendations Function
         if ($profileValid) {
-            $recommendations = Get-DotWinRecommendations -SystemProfile $profile -MaxRecommendations 5 -Verbose:$false
+            $recommendations = Get-DotWinRecommendations -SystemProfile $systemProfile -MaxRecommendations 5 -Verbose:$false
             $recommendationsValid = $null -ne $recommendations -and $recommendations.Count -ge 0
             Write-TestResult -TestName "Get-DotWinRecommendations Function" -Category "Integration" -Passed $recommendationsValid -Details @{
                 RecommendationCount = $recommendations.Count
@@ -318,20 +318,20 @@ function Test-IntegrationFunctions {
         
         # Test 3: System Metrics Calculation
         if ($profileValid) {
-            $metricsValid = $profile.SystemMetrics.Count -gt 0 -and
-                           $profile.SystemMetrics.ContainsKey("PerformanceScore") -and
-                           $profile.SystemMetrics.ContainsKey("SecurityScore")
+            $metricsValid = $systemProfile.SystemMetrics.Count -gt 0 -and
+                           $systemProfile.SystemMetrics.ContainsKey("PerformanceScore") -and
+                           $systemProfile.SystemMetrics.ContainsKey("SecurityScore")
             
             Write-TestResult -TestName "System Metrics Calculation" -Category "Integration" -Passed $metricsValid -Details @{
-                Metrics = $profile.SystemMetrics.Keys
-                PerformanceScore = $profile.SystemMetrics.PerformanceScore
-                SecurityScore = $profile.SystemMetrics.SecurityScore
+                Metrics = $systemProfile.SystemMetrics.Keys
+                PerformanceScore = $systemProfile.SystemMetrics.PerformanceScore
+                SecurityScore = $systemProfile.SystemMetrics.SecurityScore
             }
         }
         
         # Test 4: Profile Export/Import
         if ($profileValid) {
-            $exportJson = $profile.ExportToJson()
+            $exportJson = $systemProfile.ExportToJson()
             $exportValid = -not [string]::IsNullOrEmpty($exportJson)
             Write-TestResult -TestName "Profile Export to JSON" -Category "Integration" -Passed $exportValid -Details @{
                 JsonLength = $exportJson.Length

@@ -64,7 +64,7 @@ function Invoke-DotWinConfiguration {
         })]
         [string]$ConfigurationPath,
 
-        [Parameter(Mandatory = $true, ParameterSetName = 'Object')]
+        [Parameter(Mandatory = $true, ParameterSetName = 'Object', ValueFromPipeline = $true)]
         $Configuration,
 
         [Parameter()]

@@ -60,7 +60,10 @@ function Get-DotWinRecommendations {
     #>
     [CmdletBinding(SupportsShouldProcess)]
     param(
-        [Parameter(ValueFromPipeline = $true)]
+        [Parameter(ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true)]
+        [object]$InputObject,
+
+        [Parameter()]
         [DotWinSystemProfiler]$SystemProfile,
 
         [Parameter()]
@@ -108,10 +111,22 @@ function Get-DotWinRecommendations {
 
     process {
         try {
-            # Generate or use provided system profile
-            if ($null -eq $SystemProfile) {
-                throw "SystemProfile parameter cannot be null. Provide a valid system profile or omit the parameter to generate one automatically."
+            # Handle pipeline input - check if we received a DotWinSystemStatus object
+            if ($InputObject -and $InputObject.GetType().Name -eq 'DotWinSystemStatus') {
+                Write-DotWinLog "Received DotWinSystemStatus from pipeline, extracting SystemProfile..." -Level Information
+                # Extract SystemProfile from the status object if available
+                if ($InputObject.ConfigurationStatus -and $InputObject.ConfigurationStatus.SystemProfile) {
+                    $SystemProfile = $InputObject.ConfigurationStatus.SystemProfile
+                } else {
+                    Write-DotWinLog "No SystemProfile found in status object, generating new profile..." -Level Information
+                    $SystemProfile = Get-DotWinSystemProfile -UseParallel:($PSVersionTable.PSVersion.Major -ge 7)
+                }
+            } elseif ($InputObject -and $InputObject.GetType().Name -eq 'DotWinSystemProfiler') {
+                Write-DotWinLog "Received DotWinSystemProfiler from pipeline" -Level Information
+                $SystemProfile = $InputObject
             }
+
+            # Generate or use provided system profile
             if (-not $SystemProfile) {
                 Write-DotWinLog "No system profile provided, generating new profile..." -Level Information
                 $SystemProfile = Get-DotWinSystemProfile -UseParallel:($PSVersionTable.PSVersion.Major -ge 7)
