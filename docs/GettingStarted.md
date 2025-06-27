@@ -1,313 +1,497 @@
 # Getting Started with DotWin
 
-Welcome! This guide will help you set up DotWin and get your Windows computer configured in just a few minutes.
+Welcome to DotWin! This guide will help you get up and running with declarative Windows configuration management in minutes.
 
-## What You'll Need
+## Prerequisites
 
-Before we start, make sure you have:
+Before you begin, ensure you have:
 
-- A Windows 10 or Windows 11 computer
-- Internet connection
-- About 10 minutes of your time
+- **Windows 10/11** (version 1903 or later)
+- **PowerShell 5.1+** (PowerShell 7+ recommended for best performance)
+- **Administrator privileges** for system-level changes
+- **Internet connection** for package downloads
 
-That's it! Everything else is already on your computer.
+### Recommended Setup
 
-## Step 1: Open PowerShell as Administrator
+- **PowerShell 7+** for parallel processing capabilities
+- **Windows Terminal** for enhanced terminal experience
+- **Git** for configuration version control
 
-This is the most important step. Here's how:
+## Installation
 
-1. Click the Start button
-2. Type "PowerShell"
-3. Right-click on "Windows PowerShell"
-4. Choose "Run as administrator"
-5. Click "Yes" when Windows asks for permission
-
-You'll see a blue window with white text - that's PowerShell!
-
-## Step 2: Download DotWin
-
-Copy and paste this command into PowerShell and press Enter:
+### Method 1: PowerShell Gallery (Recommended)
 
 ```powershell
-git clone https://github.com/your-org/DotWin.git
+# Install DotWin from PowerShell Gallery
+Install-Module DotWin -Scope CurrentUser
+
+# Import the module
+Import-Module DotWin
+
+# Verify installation
+Get-DotWinSystemStatus
 ```
 
-Then type this and press Enter:
+### Method 2: Manual Installation
 
 ```powershell
-cd DotWin
-```
+# Clone the repository
+git clone https://github.com/dotwin/dotwin.git
+cd dotwin
 
-**Don't have Git?** No problem! You can download DotWin as a ZIP file instead:
-
-1. Go to the DotWin website
-2. Click "Download ZIP"
-3. Extract the files to a folder like `C:\DotWin`
-4. In PowerShell, type: `cd C:\DotWin`
-
-## Step 3: Load DotWin
-
-Copy and paste this command:
-
-```powershell
+# Import the module
 Import-Module .\DotWin.psd1 -Force
+
+# Verify installation
+Get-Command -Module DotWin
 ```
 
-If you see an error about execution policy, run this first:
+## Quick Start Examples
+
+### 1. System Profiling and Recommendations
+
+Start by understanding your current system:
 
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# Get comprehensive system profile
+$profile = Get-DotWinSystemProfile -UseParallel
+
+# View system summary
+$profile.Hardware.GetHardwareCategory()
+$profile.Software.GetUserType()
+$profile.User.GetTechnicalLevel()
+
+# Get intelligent recommendations
+$recommendations = Get-DotWinRecommendations -SystemProfile $profile -Priority "High"
+
+# View top recommendations
+$recommendations | Select-Object -First 5 | Format-Table Title, Priority, Category
 ```
 
-Then try the Import-Module command again.
+### 2. Package Management
 
-## Step 4: Check Your System
-
-Let's see what DotWin thinks about your computer:
+Install packages using rich configurations:
 
 ```powershell
-Get-DotWinStatus
+# Install development tools by category
+Install-Packages -Category "Development" -Source "winget"
+
+# Install specific packages with options
+$packages = @(
+    @{ Id = "Git.Git"; Version = "2.40.0" },
+    @{ Id = "Microsoft.VisualStudioCode"; InstallOptions = @{ scope = "machine" } }
+)
+Install-Packages -PackageList $packages -WhatIf
+
+# View available package categories
+Get-DotWinAvailableConfigurations -ConfigType "Packages"
 ```
 
-This will show you information about your system. Don't worry if you don't understand everything - DotWin does!
+### 3. Terminal Configuration
 
-## Step 5: Get Recommendations
-
-Now let's see what DotWin recommends for your computer:
+Configure Windows Terminal with rich themes:
 
 ```powershell
-Get-DotWinRecommendations
+# Apply a complete terminal theme
+Set-TerminalProfile -Theme "SolarizedDark" -IncludeProfiles -IncludeKeybindings
+
+# View available themes
+Get-DotWinAvailableConfigurations -ConfigType "Terminal"
+
+# Configure with backup
+Set-TerminalProfile -Theme "OneHalfDark" -BackupExisting
 ```
 
-DotWin will analyze your system and suggest improvements. It might recommend:
+### 4. Complete System Configuration
 
-- Programs to install
-- Settings to change
-- Drivers to update
-- Features to enable
-
-## Step 6: Apply the Recommendations
-
-If the recommendations look good to you, apply them:
+Apply comprehensive configurations:
 
 ```powershell
-Invoke-DotWinConfiguration
+# Apply a pre-built development workstation setup
+Invoke-DotWinConfiguration -ConfigurationPath "examples/configurations/developer-workstation.json"
+
+# Apply enterprise security baseline
+Invoke-DotWinConfiguration -ConfigurationPath "examples/configurations/enterprise-baseline.json" -WhatIf
 ```
 
-DotWin will now start setting up your system. This might take a few minutes depending on what needs to be done.
+## Understanding DotWin Configurations
 
-## What Just Happened?
+### Configuration Types
 
-DotWin looked at your computer and figured out:
+DotWin supports multiple configuration formats:
 
-- What kind of hardware you have
-- What programs you might need
-- How to optimize your settings
-- What drivers need updating
+#### 1. Rich PowerShell Configurations (Recommended)
 
-Then it automatically configured everything for you!
-
-## Common Tasks
-
-### Install Popular Programs
-
-Want to install common programs like browsers, media players, and utilities?
+Located in `config/*.ps1` files with full PowerShell capabilities:
 
 ```powershell
-Install-Applications
+# Example: Using package categories
+Install-Packages -Category "Development"
+
+# Example: Using terminal themes
+Set-TerminalProfile -Theme "SolarizedDark"
 ```
 
-### Set Up for Programming
+#### 2. JSON Configurations
 
-If you're a developer or want to learn programming:
-
-```powershell
-Install-SystemTools -ToolCategory Development
-```
-
-This installs things like Git, Visual Studio Code, and other developer tools.
-
-### Clean Up Your Computer
-
-Remove bloatware and unnecessary programs:
-
-```powershell
-Remove-Bloatware
-```
-
-Turn off tracking and telemetry:
-
-```powershell
-Disable-Telemetry
-```
-
-### Update Your Drivers
-
-Keep your drivers up to date:
-
-```powershell
-Search-ChipsetDriver
-```
-
-## Creating Your Own Setup
-
-You can tell DotWin exactly what programs you want. Create a file called `my-programs.json`:
+Declarative JSON files for complete system setup:
 
 ```json
 {
-  "name": "My Favorite Programs",
+  "name": "My Development Setup",
   "items": [
     {
-      "name": "Essential Programs",
-      "type": "Packages",
+      "name": "Development Tools",
+      "type": "SystemTools",
+      "enabled": true,
       "properties": {
-        "packages": [
-          "firefox",
-          "7zip",
-          "vlc",
-          "discord",
-          "spotify"
-        ]
+        "category": "Development",
+        "tools": ["git", "vscode", "docker-desktop"]
       }
     }
   ]
 }
 ```
 
-Then run:
+### Available Rich Configurations
+
+#### Package Categories (`config/Packages.ps1`)
+
+- **Development**: Git, VS Code, Docker, Node.js, Python
+- **Productivity**: Office tools, browsers, utilities
+- **Media**: Video/audio tools, codecs, players
+- **Gaming**: Game platforms, tools, utilities
+- **Security**: Antivirus, VPN, security tools
+
+#### Terminal Themes (`config/Terminal.ps1`)
+
+- **SolarizedDark**: Popular dark theme with excellent contrast
+- **SolarizedLight**: Light variant of Solarized
+- **OneHalfDark**: GitHub's dark theme
+- **Campbell**: Windows Terminal default theme
+- **Vintage**: Retro terminal appearance
+
+#### PowerShell Profiles (`config/Profile.ps1`)
+
+- **Developer**: Enhanced profile for developers
+- **PowerUser**: Advanced features for power users
+- **Basic**: Simple, clean profile for beginners
+
+## Step-by-Step Walkthrough
+
+### Step 1: Initial System Assessment
 
 ```powershell
-Invoke-DotWinConfiguration -ConfigurationPath ".\my-programs.json"
+# Check current system status
+Get-DotWinSystemStatus
+
+# Perform comprehensive profiling
+$profile = Get-DotWinSystemProfile -IncludeHardware -IncludeSoftware -IncludeUser
+
+# Export profile for reference
+$profile | Export-Clixml "my-system-profile.xml"
 ```
 
-## Easy Ways to Generate Config Files
-
-DotWin gives you three simple ways to create configuration files:
-
-### Method 1: Use Ready-Made Templates (Recommended for Beginners)
-
-See what templates are available:
+### Step 2: Get Recommendations
 
 ```powershell
-New-DotWinConfigurationTemplate -ListTemplates
+# Get all recommendations
+$allRecommendations = Get-DotWinRecommendations -SystemProfile $profile
+
+# Filter by priority
+$highPriority = $allRecommendations | Where-Object Priority -eq "High"
+$mediumPriority = $allRecommendations | Where-Object Priority -eq "Medium"
+
+# View recommendations by category
+$allRecommendations | Group-Object Category | Format-Table Name, Count
 ```
 
-Create a template for your needs:
+### Step 3: Apply Basic Configurations
 
 ```powershell
-# For developers
-New-DotWinConfigurationTemplate -Template Developer -OutputPath "dev-setup.json"
+# Start with terminal configuration
+Set-TerminalProfile -Theme "SolarizedDark" -IncludeProfiles -IncludeKeybindings
 
-# For gamers
-New-DotWinConfigurationTemplate -Template Gamer -OutputPath "gaming-setup.json"
+# Install essential development tools
+Install-Packages -Category "Development" -AcceptLicenses
 
-# For a clean, minimal setup
-New-DotWinConfigurationTemplate -Template Minimal -OutputPath "clean-setup.json"
-
-# For students
-New-DotWinConfigurationTemplate -Template Student -OutputPath "student-setup.json"
+# Apply PowerShell profile enhancements
+Set-PowerShellProfile -ProfileType "Developer"
 ```
 
-Then apply it:
+### Step 4: Apply Advanced Configurations
 
 ```powershell
-Invoke-DotWinConfiguration -ConfigurationPath "dev-setup.json"
+# Apply a complete workstation setup
+Invoke-DotWinConfiguration -ConfigurationPath "examples/configurations/developer-workstation.json"
+
+# Or create a custom configuration
+$customConfig = @{
+    name = "My Custom Setup"
+    items = @(
+        @{
+            name = "My Packages"
+            type = "Packages"
+            properties = @{
+                category = "Development"
+                packages = @("Git.Git", "Microsoft.VisualStudioCode")
+            }
+        }
+    )
+}
+
+Invoke-DotWinConfiguration -Configuration $customConfig
 ```
 
-### Method 2: Export Your Current Setup
-
-If you already have a computer set up the way you like it:
+### Step 5: Export Your Configuration
 
 ```powershell
-# Save your current setup as a config file
-Export-DotWinConfiguration -OutputPath "my-backup.json"
+# Export current system state for backup
+Export-DotWinConfiguration -OutputPath "my-system-backup.json" -IncludePackages -IncludeSettings -IncludeMetadata
 
-# Use it on another computer
-Invoke-DotWinConfiguration -ConfigurationPath "my-backup.json"
+# Export specific categories
+Export-DotWinConfiguration -OutputPath "my-dev-setup.json" -PackageSource "Winget" -ExcludeSystemPackages
 ```
 
-### Method 3: Convert Smart Recommendations
+## Common Workflows
 
-Let DotWin analyze your system and create a config:
+### Development Environment Setup
 
 ```powershell
-# Get recommendations and save them as a config
-$recommendations = Get-DotWinRecommendations
-ConvertTo-DotWinConfiguration -Recommendations $recommendations -OutputPath "smart-setup.json"
+# Complete development environment in one command
+Invoke-DotWinConfiguration -ConfigurationPath "examples/configurations/developer-workstation.json"
 
-# Or do it all in one step
-Get-DotWinRecommendations | ConvertTo-DotWinConfiguration -OutputPath "auto-config.json"
+# Or step by step
+Install-Packages -Category "Development"
+Set-TerminalProfile -Theme "SolarizedDark" -IncludeProfiles
+Set-PowerShellProfile -ProfileType "Developer"
 ```
 
-### Which Method Should I Use?
-
-- **New to computers?** Use Method 1 (Templates) - pick "Minimal" or "Student"
-- **Know what you want?** Use Method 1 (Templates) - pick "Developer", "Gamer", etc.
-- **Have a setup you love?** Use Method 2 (Export) to back it up
-- **Want DotWin to decide?** Use Method 3 (Recommendations)
-
-## Something Not Working?
-
-### PowerShell Won't Let You Run Commands
-
-Try this:
+### System Optimization
 
 ```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# Get optimization recommendations
+$optimizations = Get-DotWinRecommendations -Category "Performance" -Priority "High"
+
+# Apply safe optimizations automatically
+Get-DotWinRecommendations -ApplyRecommendations -Category "Performance"
+
+# Manual optimization
+Set-SystemOptimizations -PowerPlan "High Performance" -VisualEffects "Performance"
 ```
 
-### Can't Import DotWin
-
-Make sure you're in the right folder:
+### Security Hardening
 
 ```powershell
-cd C:\path\to\DotWin
-Import-Module .\DotWin.psd1 -Force
+# Apply enterprise security baseline
+Invoke-DotWinConfiguration -ConfigurationPath "examples/configurations/enterprise-baseline.json"
+
+# Get security recommendations
+$securityRecs = Get-DotWinRecommendations -Category "Security" -Priority "High"
+
+# Apply specific security configurations
+Set-SecurityConfiguration -EnableDefender -ConfigureFirewall -EnableBitLocker
 ```
 
-### Want to See What DotWin Will Do First
+## Configuration Discovery
 
-Add `-WhatIf` to any command to see what it would do without actually doing it:
+### Finding Available Configurations
 
 ```powershell
-Invoke-DotWinConfiguration -WhatIf
+# List all available configurations
+Get-DotWinAvailableConfigurations
+
+# List package categories
+Get-DotWinAvailableConfigurations -ConfigType "Packages"
+
+# List terminal themes
+Get-DotWinAvailableConfigurations -ConfigType "Terminal"
+
+# List PowerShell profiles
+Get-DotWinAvailableConfigurations -ConfigType "Profile"
 ```
 
-### Need More Help
-
-Get detailed help for any command:
+### Exploring Rich Configurations
 
 ```powershell
-Get-Help Get-DotWinStatus -Full
+# View package categories and their contents
+. "$env:USERPROFILE\Documents\PowerShell\Modules\DotWin\config\Packages.ps1"
+Get-DevelopmentPackages
+Get-ProductivityPackages
+
+# View terminal themes
+. "$env:USERPROFILE\Documents\PowerShell\Modules\DotWin\config\Terminal.ps1"
+Get-SolarizedDarkTheme
+Get-CampbellTheme
 ```
 
-Check if everything is working properly:
+## Validation and Testing
+
+### Configuration Validation
 
 ```powershell
+# Validate configuration before applying
+Test-DotWinConfiguration -ConfigurationPath "my-config.json"
+
+# Test specific configuration types
+Test-DotWinConfiguration -ConfigType "Packages" -Category "Development"
+
+# Validate system prerequisites
 Test-DotWinEnvironment
 ```
 
-## Tips for Success
+### Dry Run (WhatIf)
 
-1. **Always run PowerShell as Administrator** - This gives DotWin permission to make system changes
-2. **Be patient** - Some operations take a few minutes, especially driver updates
-3. **Use `-WhatIf` first** - This shows you what will happen before it happens
-4. **Start simple** - Try the basic commands first before creating custom configurations
+```powershell
+# See what would happen without making changes
+Invoke-DotWinConfiguration -ConfigurationPath "my-config.json" -WhatIf
 
-## What's Next?
+# Test package installation
+Install-Packages -Category "Development" -WhatIf
 
-Once you've got the basics working:
+# Test terminal configuration
+Set-TerminalProfile -Theme "SolarizedDark" -WhatIf
+```
 
-- Explore the different commands DotWin offers
-- Create custom configurations for your specific needs
-- Set up automatic updates and maintenance
+## Progress Tracking and Logging
 
-Remember: DotWin is designed to be safe. It won't break your computer, and most changes can be undone if needed.
+### Monitoring Progress
 
-## Need More Help?
+DotWin provides comprehensive progress tracking:
 
-- Check the main [README](../README.md) for quick examples
-- Look at the [Troubleshooting guide](Troubleshooting.md) for solutions to common problems
-- Use `Get-Help <command-name>` in PowerShell for detailed help on any command
+```powershell
+# Progress is automatically displayed during operations
+Install-Packages -Category "Development"
 
-Happy computing!
+# View detailed logs
+Get-DotWinLog -Level Information -Last 50
+
+# Export logs for troubleshooting
+Export-DotWinLog -OutputPath "dotwin-logs.txt" -IncludeDebug
+```
+
+### Understanding Progress Output
+
+```text
+[████████████████████████████████████████] 100% | Installing Packages (4/4)
+├─ [████████████████████████████████████████] 100% | Git.Git - Completed
+├─ [████████████████████████████████████████] 100% | Microsoft.VisualStudioCode - Completed
+├─ [████████████████████████████████████████] 100% | Docker.DockerDesktop - Completed
+└─ [████████████████████████████████████████] 100% | Node.js - Completed
+
+Package installation completed: 4 successful, 0 failed (Duration: 45.2s)
+```
+
+## Troubleshooting Common Issues
+
+### Installation Issues
+
+```powershell
+# Check PowerShell execution policy
+Get-ExecutionPolicy
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Verify module installation
+Get-Module DotWin -ListAvailable
+
+# Check for conflicts
+Get-Module DotWin -All
+```
+
+### Configuration Issues
+
+```powershell
+# Validate environment
+Test-DotWinEnvironment
+
+# Check configuration syntax
+Test-DotWinConfiguration -ConfigurationPath "my-config.json"
+
+# View detailed error information
+$Error[0] | Format-List * -Force
+```
+
+### Permission Issues
+
+```powershell
+# Check if running as administrator
+([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+
+# Run specific commands with elevation
+Start-Process PowerShell -Verb RunAs -ArgumentList "-Command", "Install-Packages -Category Development"
+```
+
+## Best Practices
+
+### 1. Configuration Management
+
+- **Version Control**: Store your configurations in Git
+- **Backup**: Export configurations before major changes
+- **Testing**: Always use `-WhatIf` for new configurations
+- **Incremental**: Apply configurations in small, testable chunks
+
+### 2. System Maintenance
+
+- **Regular Profiling**: Run system profiling monthly
+- **Update Packages**: Keep packages updated regularly
+- **Monitor Recommendations**: Check for new recommendations weekly
+- **Backup Configurations**: Export system state before major changes
+
+### 3. Security Considerations
+
+- **Validate Sources**: Only use trusted configuration sources
+- **Review Changes**: Always review what will be changed
+- **Minimal Privileges**: Run with least necessary privileges
+- **Audit Trail**: Keep logs of all system changes
+
+## Next Steps
+
+Now that you're familiar with DotWin basics:
+
+1. **Explore Advanced Features**: Check out the [Architecture Guide](Architecture.md)
+2. **Create Custom Configurations**: Learn about [Configuration Reference](ConfigurationReference.md)
+3. **Contribute**: See our [Contributing Guide](../CONTRIBUTING.md)
+4. **Get Help**: Visit [Troubleshooting](Troubleshooting.md) for common issues
+
+## Quick Reference
+
+### Essential Commands
+
+```powershell
+# System assessment
+Get-DotWinSystemStatus
+Get-DotWinSystemProfile
+
+# Package management
+Install-Packages -Category "Development"
+Get-InstalledPackages
+
+# Configuration
+Invoke-DotWinConfiguration -ConfigurationPath "config.json"
+Export-DotWinConfiguration -OutputPath "backup.json"
+
+# Terminal and profiles
+Set-TerminalProfile -Theme "SolarizedDark"
+Set-PowerShellProfile -ProfileType "Developer"
+
+# Recommendations
+Get-DotWinRecommendations -Priority "High"
+```
+
+### Configuration Files
+
+```text
+DotWin/
+├── config/
+│   ├── Packages.ps1      # Package categories and definitions
+│   ├── Terminal.ps1      # Terminal themes and profiles
+│   ├── Profile.ps1       # PowerShell profile templates
+│   ├── Tools.ps1         # System tools and optimizations
+│   └── WSL.ps1          # WSL configurations
+└── examples/
+    └── configurations/
+        ├── developer-workstation.json
+        └── enterprise-baseline.json
+```
+
+Welcome to the world of declarative Windows configuration management! 🚀

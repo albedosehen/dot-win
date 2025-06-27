@@ -92,7 +92,7 @@ function Test-DotWinConfiguration {
     )
 
     begin {
-        Write-DotWinLog "Starting configuration validation" -Level Information
+        Write-DotWinLog "Starting configuration validation" -Level "Information"
         $startTime = Get-Date
 
         # Initialize validation results
@@ -113,7 +113,7 @@ function Test-DotWinConfiguration {
 
         # Check PowerShell version for parallel processing
         if ($ParallelValidation -and $PSVersionTable.PSVersion.Major -lt 7) {
-            Write-DotWinLog "Parallel validation requires PowerShell 7+. Using sequential validation." -Level Warning
+            Write-DotWinLog "Parallel validation requires PowerShell 7+. Using sequential validation." -Level "Warning"
             $ParallelValidation = $false
         }
     }
@@ -122,7 +122,7 @@ function Test-DotWinConfiguration {
         try {
             # Load configuration if path provided
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
-                Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level Information
+                Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level "Information"
                 $Configuration = Import-DotWinConfiguration -Path $ConfigurationPath
             }
 
@@ -131,7 +131,7 @@ function Test-DotWinConfiguration {
             }
 
             $validationResults.TotalItems = $Configuration.Items.Count
-            Write-DotWinLog "Validating configuration '$($Configuration.Name)' with $($Configuration.Items.Count) items" -Level Information
+            Write-DotWinLog "Validating configuration '$($Configuration.Name)' with $($Configuration.Items.Count) items" -Level "Information"
 
             # Validate configuration structure
             $structureValidation = Test-ConfigurationStructure -Configuration $Configuration
@@ -143,7 +143,7 @@ function Test-DotWinConfiguration {
 
             # Validate individual configuration items
             if ($ParallelValidation) {
-                Write-DotWinLog "Using parallel validation for enhanced performance" -Level Information
+                Write-DotWinLog "Using parallel validation for enhanced performance" -Level "Information"
                 $itemResults = Test-ConfigurationItemsParallel -Configuration $Configuration -Timeout $ValidationTimeout
             } else {
                 $itemResults = Test-ConfigurationItemsSequential -Configuration $Configuration -Timeout $ValidationTimeout
@@ -156,7 +156,7 @@ function Test-DotWinConfiguration {
 
             # System validation
             if ($IncludeSystemValidation) {
-                Write-DotWinLog "Performing system compatibility validation" -Level Information
+                Write-DotWinLog "Performing system compatibility validation" -Level "Information"
                 $systemValidation = Test-SystemCompatibility -Configuration $Configuration
                 $validationResults.SystemCompatible = $systemValidation.Compatible
                 if (-not $systemValidation.Compatible) {
@@ -166,7 +166,7 @@ function Test-DotWinConfiguration {
 
             # Dependency validation
             if ($IncludeDependencyCheck) {
-                Write-DotWinLog "Checking configuration dependencies" -Level Information
+                Write-DotWinLog "Checking configuration dependencies" -Level "Information"
                 $dependencyValidation = Test-ConfigurationDependencies -Configuration $Configuration
                 $validationResults.DependenciesValid = $dependencyValidation.Valid
                 if (-not $dependencyValidation.Valid) {
@@ -176,7 +176,7 @@ function Test-DotWinConfiguration {
 
             # Performance analysis
             if ($IncludePerformanceAnalysis) {
-                Write-DotWinLog "Analyzing performance impact" -Level Information
+                Write-DotWinLog "Analyzing performance impact" -Level "Information"
                 $performanceAnalysis = Get-ConfigurationPerformanceImpact -Configuration $Configuration
                 $validationResults.PerformanceImpact = $performanceAnalysis
                 if ($performanceAnalysis.HighImpactItems -gt 0) {
@@ -197,7 +197,7 @@ function Test-DotWinConfiguration {
             $validationResults.Recommendations += Get-ValidationRecommendations -ValidationResults $validationResults
 
         } catch {
-            Write-DotWinLog "Critical error during configuration validation: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during configuration validation: $($_.Exception.Message)" -Level "Error"
             $validationResults.OverallStatus = "Error"
             $validationResults.Issues += "Validation failed: $($_.Exception.Message)"
             throw
@@ -207,9 +207,9 @@ function Test-DotWinConfiguration {
     end {
         $validationResults.ValidationDuration = (Get-Date) - $startTime
         
-        Write-DotWinLog "Configuration validation completed in $($validationResults.ValidationDuration.TotalSeconds) seconds" -Level Information
-        Write-DotWinLog "Validation status: $($validationResults.OverallStatus)" -Level Information
-        Write-DotWinLog "Items - Valid: $($validationResults.ValidItems), Invalid: $($validationResults.InvalidItems), Warnings: $($validationResults.WarningItems)" -Level Information
+        Write-DotWinLog "Configuration validation completed in $($validationResults.ValidationDuration.TotalSeconds) seconds" -Level "Information"
+        Write-DotWinLog "Validation status: $($validationResults.OverallStatus)" -Level "Information"
+        Write-DotWinLog "Items - Valid: $($validationResults.ValidItems), Invalid: $($validationResults.InvalidItems), Warnings: $($validationResults.WarningItems)" -Level "Information"
 
         return $validationResults
     }

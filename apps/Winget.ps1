@@ -34,11 +34,11 @@ class DotWinWingetPackage : DotWinConfigurationItem {
 
     [bool] Test() {
         try {
-            Write-DotWinLog "Testing if package '$($this.PackageId)' is installed" -Level Verbose
+            Write-DotWinLog "Testing if package '$($this.PackageId)' is installed" -Level "Verbose"
 
             # Check if winget is available
             if (-not (Test-WingetAvailable)) {
-                Write-DotWinLog "Winget is not available on this system" -Level Warning
+                Write-DotWinLog "Winget is not available on this system" -Level "Warning"
                 return $false
             }
 
@@ -49,28 +49,28 @@ class DotWinWingetPackage : DotWinConfigurationItem {
             }
 
             if ($package) {
-                Write-DotWinLog "Package '$($this.PackageId)' is installed (Version: $($package.Version))" -Level Verbose
+                Write-DotWinLog "Package '$($this.PackageId)' is installed (Version: $($package.Version))" -Level "Verbose"
 
                 # If specific version is required, check version match
                 if ($this.Version -and $package.Version -ne $this.Version) {
-                    Write-DotWinLog "Package '$($this.PackageId)' version mismatch. Installed: $($package.Version), Required: $($this.Version)" -Level Verbose
+                    Write-DotWinLog "Package '$($this.PackageId)' version mismatch. Installed: $($package.Version), Required: $($this.Version)" -Level "Verbose"
                     return $false
                 }
 
                 return $true
             } else {
-                Write-DotWinLog "Package '$($this.PackageId)' is not installed" -Level Verbose
+                Write-DotWinLog "Package '$($this.PackageId)' is not installed" -Level "Verbose"
                 return $false
             }
         } catch {
-            Write-DotWinLog "Error testing package '$($this.PackageId)': $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error testing package '$($this.PackageId)': $($_.Exception.Message)" -Level "Error"
             return $false
         }
     }
 
     [void] Apply() {
         try {
-            Write-DotWinLog "Installing package '$($this.PackageId)'" -Level Information
+            Write-DotWinLog "Installing package '$($this.PackageId)'" -Level "Information"
 
             # Check if winget is available
             if (-not (Test-WingetAvailable)) {
@@ -107,19 +107,19 @@ class DotWinWingetPackage : DotWinConfigurationItem {
                 }
             }
 
-            Write-DotWinLog "Executing: winget $($arguments -join ' ')" -Level Verbose
+            Write-DotWinLog "Executing: winget $($arguments -join ' ')" -Level "Verbose"
 
             # Execute winget install
             $result = Start-Process -FilePath 'winget' -ArgumentList $arguments -Wait -PassThru -NoNewWindow
 
             if ($result.ExitCode -eq 0) {
-                Write-DotWinLog "Successfully installed package '$($this.PackageId)'" -Level Information
+                Write-DotWinLog "Successfully installed package '$($this.PackageId)'" -Level "Information"
             } else {
                 throw "Winget install failed with exit code: $($result.ExitCode)"
             }
 
         } catch {
-            Write-DotWinLog "Error installing package '$($this.PackageId)': $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error installing package '$($this.PackageId)': $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -188,7 +188,7 @@ function Test-WingetAvailable {
 
         return ($result.ExitCode -eq 0)
     } catch {
-        Write-DotWinLog "Winget is not available: $($_.Exception.Message)" -Level Verbose
+        Write-DotWinLog "Winget is not available: $($_.Exception.Message)" -Level "Verbose"
         return $false
     }
 }
@@ -208,7 +208,7 @@ function Get-WingetInstalledPackages {
     param()
 
     try {
-        Write-DotWinLog "Retrieving installed winget packages" -Level Verbose
+        Write-DotWinLog "Retrieving installed winget packages" -Level "Verbose"
 
         # Get installed packages list
         $result = & winget list --accept-source-agreements 2>$null
@@ -232,11 +232,11 @@ function Get-WingetInstalledPackages {
             }
         }
 
-        Write-DotWinLog "Found $($packages.Count) installed packages" -Level Verbose
+        Write-DotWinLog "Found $($packages.Count) installed packages" -Level "Verbose"
         return $packages
 
     } catch {
-        Write-DotWinLog "Error retrieving installed packages: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error retrieving installed packages: $($_.Exception.Message)" -Level "Error"
         return @()
     }
 }
@@ -274,7 +274,7 @@ function Search-WingetPackage {
     )
 
     try {
-        Write-DotWinLog "Searching for package: $Query" -Level Verbose
+        Write-DotWinLog "Searching for package: $Query" -Level "Verbose"
 
         if (-not (Test-WingetAvailable)) {
             throw "Winget is not available on this system"
@@ -295,7 +295,7 @@ function Search-WingetPackage {
         $result = & winget @arguments 2>$null
 
         if ($LASTEXITCODE -ne 0) {
-            Write-DotWinLog "No packages found for query: $Query" -Level Verbose
+            Write-DotWinLog "No packages found for query: $Query" -Level "Verbose"
             return @()
         }
 
@@ -314,11 +314,11 @@ function Search-WingetPackage {
             }
         }
 
-        Write-DotWinLog "Found $($packages.Count) packages matching query: $Query" -Level Verbose
+        Write-DotWinLog "Found $($packages.Count) packages matching query: $Query" -Level "Verbose"
         return $packages
 
     } catch {
-        Write-DotWinLog "Error searching for package '$Query': $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error searching for package '$Query': $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -394,7 +394,7 @@ function Install-WingetPackage {
         return $false
 
     } catch {
-        Write-DotWinLog "Error installing package '$PackageId': $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error installing package '$PackageId': $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -437,7 +437,7 @@ function Uninstall-WingetPackage {
         }
 
         if ($PSCmdlet.ShouldProcess($PackageId, "Uninstall winget package")) {
-            Write-DotWinLog "Uninstalling package '$PackageId'" -Level Information
+            Write-DotWinLog "Uninstalling package '$PackageId'" -Level "Information"
 
             # Build uninstall arguments
             $arguments = @('uninstall', $PackageId, '--silent')
@@ -454,7 +454,7 @@ function Uninstall-WingetPackage {
             $result = Start-Process -FilePath 'winget' -ArgumentList $arguments -Wait -PassThru -NoNewWindow
 
             if ($result.ExitCode -eq 0) {
-                Write-DotWinLog "Successfully uninstalled package '$PackageId'" -Level Information
+                Write-DotWinLog "Successfully uninstalled package '$PackageId'" -Level "Information"
                 return $true
             } else {
                 throw "Winget uninstall failed with exit code: $($result.ExitCode)"
@@ -464,7 +464,7 @@ function Uninstall-WingetPackage {
         return $false
 
     } catch {
-        Write-DotWinLog "Error uninstalling package '$PackageId': $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error uninstalling package '$PackageId': $($_.Exception.Message)" -Level "Error"
         throw
     }
 }

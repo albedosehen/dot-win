@@ -78,7 +78,7 @@ function Test-DotWinConfiguration {
     )
 
     begin {
-        Write-DotWinLog "Starting configuration testing" -Level Information
+        Write-DotWinLog "Starting configuration testing" -Level "Information"
         
         # Validate environment
         $envTest = Test-DotWinEnvironment
@@ -94,7 +94,7 @@ function Test-DotWinConfiguration {
         try {
             # Load configuration if path was provided
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
-                Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level Information
+                Write-DotWinLog "Loading configuration from: $ConfigurationPath" -Level "Information"
                 
                 if (Test-Path $ConfigurationPath -PathType Container) {
                     # Load all configuration files from directory
@@ -105,7 +105,7 @@ function Test-DotWinConfiguration {
                     
                     $Configuration = [DotWinConfiguration]::new("DirectoryConfiguration")
                     foreach ($file in $configFiles) {
-                        Write-DotWinLog "Loading configuration file: $($file.FullName)" -Level Verbose
+                        Write-DotWinLog "Loading configuration file: $($file.FullName)" -Level "Verbose"
                         # TODO: Implement configuration file parsing in future phases
                         Write-Warning "Configuration file parsing not yet implemented: $($file.FullName)"
                     }
@@ -123,19 +123,19 @@ function Test-DotWinConfiguration {
             
             if ($IncludeType) {
                 $itemsToTest = $itemsToTest | Where-Object { $_.Type -in $IncludeType }
-                Write-DotWinLog "Filtered to include types: $($IncludeType -join ', ')" -Level Information
+                Write-DotWinLog "Filtered to include types: $($IncludeType -join ', ')" -Level "Information"
             }
             
             if ($ExcludeType) {
                 $itemsToTest = $itemsToTest | Where-Object { $_.Type -notin $ExcludeType }
-                Write-DotWinLog "Filtered to exclude types: $($ExcludeType -join ', ')" -Level Information
+                Write-DotWinLog "Filtered to exclude types: $($ExcludeType -join ', ')" -Level "Information"
             }
 
-            Write-DotWinLog "Testing $($itemsToTest.Count) configuration items" -Level Information
+            Write-DotWinLog "Testing $($itemsToTest.Count) configuration items" -Level "Information"
 
             # Test configuration items
             if ($Parallel -and $itemsToTest.Count -gt 1) {
-                Write-DotWinLog "Running tests in parallel" -Level Information
+                Write-DotWinLog "Running tests in parallel" -Level "Information"
                 
                 # Use PowerShell jobs for parallel execution
                 $jobs = @()
@@ -183,7 +183,7 @@ function Test-DotWinConfiguration {
                 # Sequential execution
                 foreach ($item in $itemsToTest) {
                     if (-not $item.Enabled) {
-                        Write-DotWinLog "Skipping disabled item: $($item.Name)" -Level Verbose
+                        Write-DotWinLog "Skipping disabled item: $($item.Name)" -Level "Verbose"
                         continue
                     }
 
@@ -192,7 +192,7 @@ function Test-DotWinConfiguration {
                     $result.ItemType = $item.Type
 
                     try {
-                        Write-DotWinLog "Testing item: $($item.Name) (Type: $($item.Type))" -Level Verbose
+                        Write-DotWinLog "Testing item: $($item.Name) (Type: $($item.Type))" -Level "Verbose"
 
                         $testResult = $item.Test()
                         $result.IsValid = $testResult
@@ -212,13 +212,13 @@ function Test-DotWinConfiguration {
                             }
                         }
                         
-                        Write-DotWinLog "Test result for '$($item.Name)': $($result.Message)" -Level Information
+                        Write-DotWinLog "Test result for '$($item.Name)': $($result.Message)" -Level "Information"
                         
                     } catch {
                         $result.IsValid = $false
                         $result.Message = "Error testing configuration: $($_.Exception.Message)"
                         $result.Severity = "Error"
-                        Write-DotWinLog "Error testing item '$($item.Name)': $($_.Exception.Message)" -Level Error
+                        Write-DotWinLog "Error testing item '$($item.Name)': $($_.Exception.Message)" -Level "Error"
                     }
                     
                     $results += $result
@@ -226,7 +226,7 @@ function Test-DotWinConfiguration {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during configuration testing: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during configuration testing: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -236,10 +236,10 @@ function Test-DotWinConfiguration {
         $compliantCount = ($results | Where-Object { $_.IsValid }).Count
         $nonCompliantCount = ($results | Where-Object { -not $_.IsValid }).Count
         
-        Write-DotWinLog "Configuration testing completed" -Level Information
-        Write-DotWinLog "Total items tested: $($results.Count)" -Level Information
-        Write-DotWinLog "Compliant: $compliantCount, Non-compliant: $nonCompliantCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Configuration testing completed" -Level "Information"
+        Write-DotWinLog "Total items tested: $($results.Count)" -Level "Information"
+        Write-DotWinLog "Compliant: $compliantCount, Non-compliant: $nonCompliantCount" -Level "Information"
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         # Display summary if running interactively
         if ($Host.UI.RawUI.KeyAvailable -eq $false) {

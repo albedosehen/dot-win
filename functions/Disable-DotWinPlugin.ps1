@@ -48,7 +48,7 @@ function Disable-DotWinPlugin {
     )
 
     begin {
-        Write-DotWinLog "Disabling plugin: $Name" -Level Information
+        Write-DotWinLog "Disabling plugin: $Name" -Level "Information"
 
         if (-not $script:DotWinPluginManager) {
             throw "Plugin manager is not initialized"
@@ -65,7 +65,7 @@ function Disable-DotWinPlugin {
             if ($PSCmdlet.ShouldProcess($Name, "Disable Plugin")) {
                 # Check for dependent plugins
                 if (-not $Force) {
-                    Write-DotWinLog "Checking for dependent plugins: $Name" -Level Information
+                    Write-DotWinLog "Checking for dependent plugins: $Name" -Level "Information"
                     $dependentPlugins = @()
                     foreach ($pluginName in $script:DotWinPluginManager.LoadedPlugins.Keys) {
                         $plugin = $script:DotWinPluginManager.LoadedPlugins[$pluginName]
@@ -80,31 +80,31 @@ function Disable-DotWinPlugin {
                 }
 
                 # Perform graceful cleanup before unloading
-                Write-DotWinLog "Performing cleanup for plugin: $Name" -Level Information
+                Write-DotWinLog "Performing cleanup for plugin: $Name" -Level "Information"
                 $plugin = $script:DotWinPluginManager.LoadedPlugins[$Name]
                 
                 try {
                     # Call plugin's cleanup method if available
                     if ($plugin -and [bool]($plugin.PSObject.Methods | Where-Object { $_.Name -eq "Cleanup" })) {
                         $plugin.Cleanup()
-                        Write-DotWinLog "Plugin cleanup completed for: $Name" -Level Information
+                        Write-DotWinLog "Plugin cleanup completed for: $Name" -Level "Information"
                     }
                 } catch {
-                    Write-DotWinLog "Warning: Plugin cleanup failed for '$Name': $($_.Exception.Message)" -Level Warning
+                    Write-DotWinLog "Warning: Plugin cleanup failed for '$Name': $($_.Exception.Message)" -Level "Warning"
                     if (-not $Force) {
                         throw "Plugin cleanup failed. Use -Force to override."
                     }
                 }
 
                 # Unload the plugin
-                Write-DotWinLog "Unloading plugin: $Name" -Level Information
+                Write-DotWinLog "Unloading plugin: $Name" -Level "Information"
                 $unloadResult = $script:DotWinPluginManager.UnloadPlugin($Name)
                 
                 if ($unloadResult) {
-                    Write-DotWinLog "Plugin '$Name' disabled successfully" -Level Information
+                    Write-DotWinLog "Plugin '$Name' disabled successfully" -Level "Information"
                 } else {
                     if ($Force) {
-                        Write-DotWinLog "Plugin '$Name' forcefully disabled despite unload issues" -Level Warning
+                        Write-DotWinLog "Plugin '$Name' forcefully disabled despite unload issues" -Level "Warning"
                     } else {
                         throw "Failed to disable plugin '$Name'. Use -Force to override."
                     }
@@ -112,12 +112,12 @@ function Disable-DotWinPlugin {
             }
 
         } catch {
-            Write-DotWinLog "Error disabling plugin '$Name': $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error disabling plugin '$Name': $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
-        Write-DotWinLog "Plugin disabling completed for: $Name" -Level Information
+        Write-DotWinLog "Plugin disabling completed for: $Name" -Level "Information"
     }
 }

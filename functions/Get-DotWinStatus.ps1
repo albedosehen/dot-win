@@ -73,7 +73,7 @@ function Get-DotWinStatus {
     )
 
     begin {
-        Write-DotWinLog "Retrieving DotWin system status" -Level Information
+        Write-DotWinLog "Retrieving DotWin system status" -Level "Information"
         $startTime = Get-Date
     }
 
@@ -94,7 +94,7 @@ function Get-DotWinStatus {
 
             # Extended system information
             if ($IncludeSystemInfo) {
-                Write-DotWinLog "Gathering extended system information" -Level Verbose
+                Write-DotWinLog "Gathering extended system information" -Level "Verbose"
                 
                 try {
                     $systemInfo = @{}
@@ -128,25 +128,25 @@ function Get-DotWinStatus {
                                 Select-Object -ExpandProperty FeatureName -First 10
                             $systemInfo.EnabledWindowsFeatures = $windowsFeatures
                         } catch {
-                            Write-DotWinLog "Unable to retrieve Windows features: $($_.Exception.Message)" -Level Verbose
+                            Write-DotWinLog "Unable to retrieve Windows features: $($_.Exception.Message)" -Level "Verbose"
                         }
                     }
                     
                     $status.ConfigurationStatus.SystemInfo = $systemInfo
 
                     # Generate a basic system profile for pipeline compatibility
-                    Write-DotWinLog "Generating system profile for pipeline compatibility" -Level Verbose
+                    Write-DotWinLog "Generating system profile for pipeline compatibility" -Level "Verbose"
                     try {
                         $systemProfile = Get-DotWinSystemProfile -ErrorAction SilentlyContinue
                         if ($systemProfile) {
                             $status.ConfigurationStatus.SystemProfile = $systemProfile
-                            Write-DotWinLog "System profile added to status for pipeline support" -Level Verbose
+                            Write-DotWinLog "System profile added to status for pipeline support" -Level "Verbose"
                         }
                     } catch {
-                        Write-DotWinLog "Could not generate system profile: $($_.Exception.Message)" -Level Verbose
+                        Write-DotWinLog "Could not generate system profile: $($_.Exception.Message)" -Level "Verbose"
                     }
                 } catch {
-                    Write-DotWinLog "Error gathering system information: $($_.Exception.Message)" -Level Warning
+                    Write-DotWinLog "Error gathering system information: $($_.Exception.Message)" -Level "Warning"
                     $status.ConfigurationStatus.SystemInfoError = $_.Exception.Message
                 }
             }
@@ -158,14 +158,14 @@ function Get-DotWinStatus {
                         $null = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
                     }
                 } catch {
-                    Write-DotWinLog "Error accessing basic system information: $($_.Exception.Message)" -Level Warning
+                    Write-DotWinLog "Error accessing basic system information: $($_.Exception.Message)" -Level "Warning"
                     $status.ConfigurationStatus.SystemInfoError = $_.Exception.Message
                 }
             }
 
             # Module information
             if ($IncludeModuleInfo) {
-                Write-DotWinLog "Gathering module information" -Level Verbose
+                Write-DotWinLog "Gathering module information" -Level "Verbose"
                 
                 try {
                     $moduleInfo = Get-DotWinModuleInfo
@@ -198,7 +198,7 @@ function Get-DotWinStatus {
                     $status.ConfigurationStatus.ModuleInfo.AvailableApps = $appFiles
                     
                 } catch {
-                    Write-DotWinLog "Error gathering module information: $($_.Exception.Message)" -Level Warning
+                    Write-DotWinLog "Error gathering module information: $($_.Exception.Message)" -Level "Warning"
                     $status.ConfigurationStatus.ModuleInfoError = $_.Exception.Message
                 }
             }
@@ -206,7 +206,7 @@ function Get-DotWinStatus {
             # Configuration compliance check
             if ($ConfigurationPath) {
                 if ($IncludeCompliance) {
-                    Write-DotWinLog "Checking configuration compliance" -Level Information
+                    Write-DotWinLog "Checking configuration compliance" -Level "Information"
                     
                     try {
                         $complianceResults = Test-DotWinConfiguration -ConfigurationPath $ConfigurationPath
@@ -225,7 +225,7 @@ function Get-DotWinStatus {
                         $status.IsCompliant = ($complianceResults.OverallStatus -eq "Valid")
 
                     } catch {
-                        Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level Error
+                        Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level "Error"
                         $status.ConfigurationStatus.ComplianceError = $_.Exception.Message
                         $status.IsCompliant = $false
                     }
@@ -235,7 +235,7 @@ function Get-DotWinStatus {
                         $complianceResults = Test-DotWinConfiguration -ConfigurationPath $ConfigurationPath
                         $status.IsCompliant = ($complianceResults.OverallStatus -eq "Valid")
                     } catch {
-                        Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level Error
+                        Write-DotWinLog "Error checking configuration compliance: $($_.Exception.Message)" -Level "Error"
                         $status.ConfigurationStatus.ComplianceError = $_.Exception.Message
                         $status.IsCompliant = $false
                     }
@@ -263,13 +263,13 @@ function Get-DotWinStatus {
             }
 
         } catch {
-            Write-DotWinLog "Error retrieving system status: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error retrieving system status: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
-        Write-DotWinLog "System status retrieval completed" -Level Information
+        Write-DotWinLog "System status retrieval completed" -Level "Information"
         
         # Format output based on requested format
         switch ($Format) {

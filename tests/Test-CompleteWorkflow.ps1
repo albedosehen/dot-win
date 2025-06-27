@@ -303,8 +303,8 @@ function Test-VerboseDebugModes {
     
     # These should be visible in verbose mode
     Write-Verbose "This verbose message should be visible during progress"
-    Write-DotWinLog -Message "This is an information message during progress" -Level Information -ShowWithProgress
-    Write-DotWinLog -Message "This is a warning message during progress" -Level Warning -ShowWithProgress
+    Write-DotWinLog -Message "This is an information message during progress" -Level "Information" -ShowWithProgress
+    Write-DotWinLog -Message "This is a warning message during progress" -Level "Warning" -ShowWithProgress
     
     Complete-DotWinProgress -ProgressId $progressId -Status "Verbose mode test completed"
     
@@ -314,7 +314,7 @@ function Test-VerboseDebugModes {
         $debugProgressId = Start-DotWinProgress -Activity "Debug Mode Test" -Status "Testing debug logging coordination"
         
         Write-Debug "This debug message should be visible during progress"
-        Write-DotWinLog -Message "This is a debug-level message during progress" -Level Verbose -ShowWithProgress
+        Write-DotWinLog -Message "This is a debug-level message during progress" -Level "Verbose" -ShowWithProgress
         
         Complete-DotWinProgress -ProgressId $debugProgressId -Status "Debug mode test completed"
     }

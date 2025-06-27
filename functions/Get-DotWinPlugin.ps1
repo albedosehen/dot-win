@@ -65,7 +65,7 @@ function Get-DotWinPlugin {
     )
 
     begin {
-        Write-DotWinLog "Retrieving plugin information" -Level Information
+        Write-DotWinLog "Retrieving plugin information" -Level "Information"
 
         # Initialize plugin manager if not already done
         if (-not $script:DotWinPluginManager) {
@@ -126,7 +126,7 @@ function Get-DotWinPlugin {
             return $plugins
 
         } catch {
-            Write-DotWinLog "Error retrieving plugin information: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error retrieving plugin information: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }

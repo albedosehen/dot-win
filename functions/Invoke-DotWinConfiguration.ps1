@@ -176,7 +176,7 @@ function Invoke-DotWinConfiguration {
                                 try {
                                     $Configuration.AddItem($item)
                                 } catch {
-                                    Write-DotWinLog "Skipping duplicate item '$($item.Name)' from file '$($file.Name)': $($_.Exception.Message)" -Level Warning -ShowWithProgress
+                                    Write-DotWinLog "Skipping duplicate item '$($item.Name)' from file '$($file.Name)': $($_.Exception.Message)" -Level "Warning" -ShowWithProgress
                                 }
                             }
 
@@ -187,16 +187,16 @@ function Invoke-DotWinConfiguration {
                                 }
                             }
 
-                            Write-DotWinLog "Successfully loaded $($fileConfig.Items.Count) items from: $($file.Name)" -Level Information -ShowWithProgress
+                            Write-DotWinLog "Successfully loaded $($fileConfig.Items.Count) items from: $($file.Name)" -Level "Information" -ShowWithProgress
                         } catch {
-                            Write-DotWinLog "Error loading configuration file '$($file.FullName)': $($_.Exception.Message)" -Level Warning -ShowWithProgress
+                            Write-DotWinLog "Error loading configuration file '$($file.FullName)': $($_.Exception.Message)" -Level "Warning" -ShowWithProgress
                         }
                     }
                 } else {
                     # Load single configuration file
                     try {
                         $Configuration = $parser.ParseFromFile($ConfigurationPath)
-                        Write-DotWinLog "Successfully loaded configuration with $($Configuration.Items.Count) items" -Level Information -ShowWithProgress
+                        Write-DotWinLog "Successfully loaded configuration with $($Configuration.Items.Count) items" -Level "Information" -ShowWithProgress
                     } catch {
                         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Error loading configuration file '$ConfigurationPath': $($_.Exception.Message)"
                         throw "Error loading configuration file '$ConfigurationPath': $($_.Exception.Message)"
@@ -209,12 +209,12 @@ function Invoke-DotWinConfiguration {
             
             if ($IncludeType) {
                 $itemsToProcess = $itemsToProcess | Where-Object { $_.Type -in $IncludeType }
-                Write-DotWinLog "Filtered to include types: $($IncludeType -join ', ')" -Level Information -ShowWithProgress
+                Write-DotWinLog "Filtered to include types: $($IncludeType -join ', ')" -Level "Information" -ShowWithProgress
             }
             
             if ($ExcludeType) {
                 $itemsToProcess = $itemsToProcess | Where-Object { $_.Type -notin $ExcludeType }
-                Write-DotWinLog "Filtered to exclude types: $($ExcludeType -join ', ')" -Level Information -ShowWithProgress
+                Write-DotWinLog "Filtered to exclude types: $($ExcludeType -join ', ')" -Level "Information" -ShowWithProgress
             }
 
             Write-DotWinProgress -ProgressId $masterProgressId -Status "Processing $($itemsToProcess.Count) configuration items" -PercentComplete 50 -TotalOperations $itemsToProcess.Count
@@ -223,7 +223,7 @@ function Invoke-DotWinConfiguration {
             $itemIndex = 0
             foreach ($item in $itemsToProcess) {
                 if (-not $item.Enabled) {
-                    Write-DotWinLog "Skipping disabled item: $($item.Name)" -Level Verbose -ShowWithProgress
+                    Write-DotWinLog "Skipping disabled item: $($item.Name)" -Level "Verbose" -ShowWithProgress
                     continue
                 }
 
@@ -328,10 +328,10 @@ function Invoke-DotWinConfiguration {
         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
 
         # Show summary with progress coordination
-        Write-DotWinLog "Configuration application completed" -Level Information -ShowWithProgress
-        Write-DotWinLog "Total items processed: $($results.Count)" -Level Information -ShowWithProgress
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information -ShowWithProgress
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information -ShowWithProgress
+        Write-DotWinLog "Configuration application completed" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Total items processed: $($results.Count)" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information" -ShowWithProgress
 
         # Ensure we always return an array, even for single items
         if ($results -is [array]) {

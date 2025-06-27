@@ -93,7 +93,7 @@ function Set-PowershellProfile {
     )
 
     begin {
-        Write-DotWinLog "Starting PowerShell profile configuration" -Level Information
+        Write-DotWinLog "Starting PowerShell profile configuration" -Level "Information"
         
         # Validate environment
         $envTest = Test-DotWinEnvironment
@@ -112,12 +112,12 @@ function Set-PowershellProfile {
 
             switch ($PSCmdlet.ParameterSetName) {
                 'ProfileType' {
-                    Write-DotWinLog "Loading profile configuration for type: $ProfileType" -Level Information
+                    Write-DotWinLog "Loading profile configuration for type: $ProfileType" -Level "Information"
                     $profileConfig = Get-PowerShellProfileConfiguration -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt
                 }
                 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading profile configuration from file: $ConfigurationPath" -Level Information
+                    Write-DotWinLog "Loading profile configuration from file: $ConfigurationPath" -Level "Information"
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $profileConfig = $configContent
                     $ProfileType = if ($profileConfig.ProfileType) { $profileConfig.ProfileType } else { 'CurrentUser' }
@@ -126,7 +126,7 @@ function Set-PowershellProfile {
 
             # Get profile path
             $profilePath = Get-PowerShellProfilePath -ProfileType $ProfileType
-            Write-DotWinLog "Profile path: $profilePath" -Level Information
+            Write-DotWinLog "Profile path: $profilePath" -Level "Information"
 
             # Create profile configuration item
             $profileItem = [DotWinPowerShellProfile]::new($ProfileType)
@@ -147,11 +147,11 @@ function Set-PowershellProfile {
                 if (-not $needsConfiguration) {
                     $result.Success = $true
                     $result.Message = "PowerShell profile already configured"
-                    Write-DotWinLog "PowerShell profile already configured" -Level Information
+                    Write-DotWinLog "PowerShell profile already configured" -Level "Information"
                 } else {
                     # Configure the profile
                     if ($PSCmdlet.ShouldProcess($ProfileType, "Configure PowerShell profile")) {
-                        Write-DotWinLog "Configuring PowerShell profile: $ProfileType" -Level Information
+                        Write-DotWinLog "Configuring PowerShell profile: $ProfileType" -Level "Information"
                         
                         # Get current state for comparison
                         $beforeState = $profileItem.GetCurrentState()
@@ -168,25 +168,25 @@ function Set-PowershellProfile {
                         
                         $result.Success = $true
                         $result.Message = "PowerShell profile configured successfully"
-                        Write-DotWinLog "Successfully configured PowerShell profile: $ProfileType" -Level Information
+                        Write-DotWinLog "Successfully configured PowerShell profile: $ProfileType" -Level "Information"
                     } else {
                         $result.Success = $true
                         $result.Message = "PowerShell profile configuration skipped (WhatIf)"
-                        Write-DotWinLog "PowerShell profile configuration skipped: $ProfileType (WhatIf)" -Level Information
+                        Write-DotWinLog "PowerShell profile configuration skipped: $ProfileType (WhatIf)" -Level "Information"
                     }
                 }
                 
             } catch {
                 $result.Success = $false
                 $result.Message = "Error configuring PowerShell profile: $($_.Exception.Message)"
-                Write-DotWinLog "Error configuring PowerShell profile '$ProfileType': $($_.Exception.Message)" -Level Error
+                Write-DotWinLog "Error configuring PowerShell profile '$ProfileType': $($_.Exception.Message)" -Level "Error"
             } finally {
                 $result.Duration = (Get-Date) - $profileStartTime
                 $results += $result
             }
 
         } catch {
-            Write-DotWinLog "Critical error during PowerShell profile configuration: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during PowerShell profile configuration: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -196,10 +196,10 @@ function Set-PowershellProfile {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
         
-        Write-DotWinLog "PowerShell profile configuration completed" -Level Information
-        Write-DotWinLog "Total profiles processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "PowerShell profile configuration completed" -Level "Information"
+        Write-DotWinLog "Total profiles processed: $($results.Count)" -Level "Information"
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information"
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         return $results
     }
@@ -415,7 +415,7 @@ function Install-PowerShellProfileModules {
                 $minVersion = $null
             }
             
-            Write-DotWinLog "Checking PowerShell module: $moduleName" -Level Verbose
+            Write-DotWinLog "Checking PowerShell module: $moduleName" -Level "Verbose"
             
             # Check if module is already installed
             $installedModule = Get-Module -Name $moduleName -ListAvailable | Sort-Object Version -Descending | Select-Object -First 1
@@ -423,14 +423,14 @@ function Install-PowerShellProfileModules {
             $needsInstall = $false
             if (-not $installedModule) {
                 $needsInstall = $true
-                Write-DotWinLog "PowerShell module '$moduleName' not found, will install" -Level Verbose
+                Write-DotWinLog "PowerShell module '$moduleName' not found, will install" -Level "Verbose"
             } elseif ($minVersion -and $installedModule.Version -lt [version]$minVersion) {
                 $needsInstall = $true
-                Write-DotWinLog "PowerShell module '$moduleName' version $($installedModule.Version) is below minimum $minVersion, will update" -Level Verbose
+                Write-DotWinLog "PowerShell module '$moduleName' version $($installedModule.Version) is below minimum $minVersion, will update" -Level "Verbose"
             }
             
             if ($needsInstall) {
-                Write-DotWinLog "Installing PowerShell module: $moduleName" -Level Information
+                Write-DotWinLog "Installing PowerShell module: $moduleName" -Level "Information"
                 
                 $installParams = @{
                     Name = $moduleName
@@ -445,13 +445,13 @@ function Install-PowerShellProfileModules {
                 }
                 
                 Install-Module @installParams
-                Write-DotWinLog "Successfully installed PowerShell module: $moduleName" -Level Information
+                Write-DotWinLog "Successfully installed PowerShell module: $moduleName" -Level "Information"
             } else {
-                Write-DotWinLog "PowerShell module '$moduleName' already installed with sufficient version" -Level Verbose
+                Write-DotWinLog "PowerShell module '$moduleName' already installed with sufficient version" -Level "Verbose"
             }
             
         } catch {
-            Write-DotWinLog "Error installing PowerShell module '$moduleName': $($_.Exception.Message)" -Level Warning
+            Write-DotWinLog "Error installing PowerShell module '$moduleName': $($_.Exception.Message)" -Level "Warning"
         }
     }
 }
@@ -471,7 +471,7 @@ function Get-PowerShellProfileStatus {
     param()
     
     try {
-        Write-DotWinLog "Retrieving PowerShell profile status" -Level Information
+        Write-DotWinLog "Retrieving PowerShell profile status" -Level "Information"
         
         $profileTypes = @('CurrentUser', 'AllUsers', 'CurrentHost', 'AllHosts')
         $status = @{}
@@ -515,11 +515,11 @@ function Get-PowerShellProfileStatus {
             }
         }
         
-        Write-DotWinLog "Retrieved PowerShell profile status successfully" -Level Information
+        Write-DotWinLog "Retrieved PowerShell profile status successfully" -Level "Information"
         return $status
         
     } catch {
-        Write-DotWinLog "Error retrieving PowerShell profile status: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error retrieving PowerShell profile status: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }

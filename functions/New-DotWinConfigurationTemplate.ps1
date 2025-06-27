@@ -99,7 +99,7 @@ function New-DotWinConfigurationTemplate {
     )
 
     begin {
-        Write-DotWinLog "Starting configuration template generation" -Level Information
+        Write-DotWinLog "Starting configuration template generation" -Level "Information"
         $startTime = Get-Date
 
         # Define available templates
@@ -181,7 +181,7 @@ function New-DotWinConfigurationTemplate {
 
             if ($PSCmdlet.ShouldProcess($OutputPath, "Generate $Template template")) {
                 
-                Write-DotWinLog "Generating $Template template with $CustomizationLevel customization level" -Level Information
+                Write-DotWinLog "Generating $Template template with $CustomizationLevel customization level" -Level "Information"
                 
                 # Get template info
                 $templateInfo = $availableTemplates[$Template]
@@ -543,7 +543,7 @@ function New-DotWinConfigurationTemplate {
 
                 # Add optional components if requested
                 if ($IncludeOptional) {
-                    Write-DotWinLog "Adding optional components to template" -Level Information
+                    Write-DotWinLog "Adding optional components to template" -Level "Information"
                     
                     # Add common optional items that can be enabled/disabled
                     $templateConfig.items += @{
@@ -579,22 +579,22 @@ function New-DotWinConfigurationTemplate {
                 )
 
                 # Convert to JSON and save
-                Write-DotWinLog "Saving template to: $OutputPath" -Level Information
+                Write-DotWinLog "Saving template to: $OutputPath" -Level "Information"
                 $jsonContent = $templateConfig | ConvertTo-Json -Depth 10
                 Set-Content -Path $OutputPath -Value $jsonContent -Encoding UTF8
                 
-                Write-DotWinLog "$Template template generated successfully" -Level Information
-                Write-DotWinLog "Template contains $($templateConfig.items.Count) configuration items" -Level Information
-                Write-DotWinLog "Customization level: $CustomizationLevel" -Level Information
+                Write-DotWinLog "$Template template generated successfully" -Level "Information"
+                Write-DotWinLog "Template contains $($templateConfig.items.Count) configuration items" -Level "Information"
+                Write-DotWinLog "Customization level: $CustomizationLevel" -Level "Information"
                 
                 return $OutputPath
             } else {
-                Write-DotWinLog "Template generation cancelled (WhatIf)" -Level Information
+                Write-DotWinLog "Template generation cancelled (WhatIf)" -Level "Information"
                 return $null
             }
 
         } catch {
-            Write-DotWinLog "Error during template generation: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error during template generation: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -602,7 +602,7 @@ function New-DotWinConfigurationTemplate {
     end {
         if ($PSCmdlet.ParameterSetName -eq 'Generate') {
             $totalDuration = (Get-Date) - $startTime
-            Write-DotWinLog "Template generation completed in $($totalDuration.TotalSeconds) seconds" -Level Information
+            Write-DotWinLog "Template generation completed in $($totalDuration.TotalSeconds) seconds" -Level "Information"
         }
     }
 }

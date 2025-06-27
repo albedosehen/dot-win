@@ -103,7 +103,7 @@ function Get-DotWinSystemHealth {
     )
 
     begin {
-        Write-DotWinLog "Starting comprehensive system health monitoring" -Level Information
+        Write-DotWinLog "Starting comprehensive system health monitoring" -Level "Information"
         $startTime = Get-Date
 
         # Initialize health report
@@ -129,12 +129,12 @@ function Get-DotWinSystemHealth {
     process {
         try {
             # Basic system information
-            Write-DotWinLog "Gathering basic system information" -Level Information
+            Write-DotWinLog "Gathering basic system information" -Level "Information"
             $healthReport.SystemInfo = Get-BasicSystemInfo
 
             # Performance metrics monitoring
             if ($IncludePerformanceMetrics) {
-                Write-DotWinLog "Collecting performance metrics over $MonitoringDuration minutes" -Level Information
+                Write-DotWinLog "Collecting performance metrics over $MonitoringDuration minutes" -Level "Information"
                 $healthReport.PerformanceMetrics = Get-PerformanceMetrics -Duration $MonitoringDuration -AlertThresholds $AlertThresholds
                 
                 # Add performance alerts
@@ -144,7 +144,7 @@ function Get-DotWinSystemHealth {
 
             # Configuration drift detection
             if ($IncludeConfigurationDrift -and $BaselineProfile) {
-                Write-DotWinLog "Analyzing configuration drift from baseline" -Level Information
+                Write-DotWinLog "Analyzing configuration drift from baseline" -Level "Information"
                 $healthReport.ConfigurationDrift = Get-ConfigurationDrift -BaselineProfile $BaselineProfile
                 
                 if ($healthReport.ConfigurationDrift.DriftDetected) {
@@ -155,7 +155,7 @@ function Get-DotWinSystemHealth {
 
             # Security status assessment
             if ($IncludeSecurityStatus) {
-                Write-DotWinLog "Assessing security posture" -Level Information
+                Write-DotWinLog "Assessing security posture" -Level "Information"
                 $healthReport.SecurityStatus = Get-SecurityStatus -AlertThresholds $AlertThresholds
                 
                 if ($healthReport.SecurityStatus.SecurityScore -lt $AlertThresholds.SecurityScoreThreshold) {
@@ -166,7 +166,7 @@ function Get-DotWinSystemHealth {
 
             # Resource utilization monitoring
             if ($IncludeResourceUtilization) {
-                Write-DotWinLog "Monitoring resource utilization patterns" -Level Information
+                Write-DotWinLog "Monitoring resource utilization patterns" -Level "Information"
                 $healthReport.ResourceUtilization = Get-ResourceUtilization -Duration $MonitoringDuration
                 
                 $resourceAlerts = Get-ResourceAlerts -Utilization $healthReport.ResourceUtilization -Thresholds $AlertThresholds
@@ -175,7 +175,7 @@ function Get-DotWinSystemHealth {
 
             # Event log analysis
             if ($IncludeEventLogAnalysis) {
-                Write-DotWinLog "Analyzing Windows Event Logs" -Level Information
+                Write-DotWinLog "Analyzing Windows Event Logs" -Level "Information"
                 $healthReport.EventLogAnalysis = Get-EventLogAnalysis -AlertThresholds $AlertThresholds
                 
                 if ($healthReport.EventLogAnalysis.CriticalErrors -gt $AlertThresholds.EventErrorThreshold) {
@@ -192,7 +192,7 @@ function Get-DotWinSystemHealth {
             $healthReport.Recommendations += Get-GeneralRecommendations -HealthReport $healthReport
 
         } catch {
-            Write-DotWinLog "Error during system health monitoring: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error during system health monitoring: $($_.Exception.Message)" -Level "Error"
             $healthReport.OverallHealth = "Error"
             $healthReport.Alerts += "Health monitoring failed: $($_.Exception.Message)"
             throw
@@ -206,15 +206,15 @@ function Get-DotWinSystemHealth {
         if ($ExportReport) {
             try {
                 $healthReport | ConvertTo-Json -Depth 10 | Set-Content -Path $ExportReport -Encoding UTF8
-                Write-DotWinLog "Health report exported to: $ExportReport" -Level Information
+                Write-DotWinLog "Health report exported to: $ExportReport" -Level "Information"
             } catch {
-                Write-DotWinLog "Failed to export health report: $($_.Exception.Message)" -Level Warning
+                Write-DotWinLog "Failed to export health report: $($_.Exception.Message)" -Level "Warning"
             }
         }
 
-        Write-DotWinLog "System health monitoring completed" -Level Information
-        Write-DotWinLog "Overall health: $($healthReport.OverallHealth) (Score: $($healthReport.HealthScore))" -Level Information
-        Write-DotWinLog "Alerts: $($healthReport.Alerts.Count), Recommendations: $($healthReport.Recommendations.Count)" -Level Information
+        Write-DotWinLog "System health monitoring completed" -Level "Information"
+        Write-DotWinLog "Overall health: $($healthReport.OverallHealth) (Score: $($healthReport.HealthScore))" -Level "Information"
+        Write-DotWinLog "Alerts: $($healthReport.Alerts.Count), Recommendations: $($healthReport.Recommendations.Count)" -Level "Information"
 
         return $healthReport
     }

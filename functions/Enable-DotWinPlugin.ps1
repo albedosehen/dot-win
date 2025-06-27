@@ -49,7 +49,7 @@ function Enable-DotWinPlugin {
     )
 
     begin {
-        Write-DotWinLog "Enabling plugin: $Name" -Level Information
+        Write-DotWinLog "Enabling plugin: $Name" -Level "Information"
 
         if (-not $script:DotWinPluginManager) {
             throw "Plugin manager is not initialized"
@@ -63,7 +63,7 @@ function Enable-DotWinPlugin {
             }
 
             if ($script:DotWinPluginManager.LoadedPlugins.ContainsKey($Name)) {
-                Write-DotWinLog "Plugin '$Name' is already loaded" -Level Information
+                Write-DotWinLog "Plugin '$Name' is already loaded" -Level "Information"
                 
                 if ($PassThru) {
                     return $script:DotWinPluginManager.LoadedPlugins[$Name]
@@ -74,22 +74,22 @@ function Enable-DotWinPlugin {
             # Validate plugin before loading
             $plugin = $script:DotWinPluginManager.PluginRegistry[$Name]
             
-            Write-DotWinLog "Validating plugin compatibility: $Name" -Level Information
+            Write-DotWinLog "Validating plugin compatibility: $Name" -Level "Information"
             if (-not $script:DotWinPluginManager.ValidatePlugin($plugin)) {
                 throw "Plugin validation failed for '$Name'. Plugin may not be compatible with current environment."
             }
 
-            Write-DotWinLog "Checking plugin dependencies: $Name" -Level Information
+            Write-DotWinLog "Checking plugin dependencies: $Name" -Level "Information"
             if (-not $script:DotWinPluginManager.CheckDependencies($plugin)) {
                 throw "Plugin dependencies not satisfied for '$Name'. Ensure all required plugins are registered and loaded."
             }
 
             # Load the plugin
-            Write-DotWinLog "Loading plugin: $Name" -Level Information
+            Write-DotWinLog "Loading plugin: $Name" -Level "Information"
             $loadResult = $script:DotWinPluginManager.LoadPlugin($Name)
             
             if ($loadResult) {
-                Write-DotWinLog "Plugin '$Name' enabled successfully" -Level Information
+                Write-DotWinLog "Plugin '$Name' enabled successfully" -Level "Information"
                 
                 if ($PassThru) {
                     return $script:DotWinPluginManager.LoadedPlugins[$Name]
@@ -99,12 +99,12 @@ function Enable-DotWinPlugin {
             }
 
         } catch {
-            Write-DotWinLog "Error enabling plugin '$Name': $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error enabling plugin '$Name': $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
-        Write-DotWinLog "Plugin enabling completed for: $Name" -Level Information
+        Write-DotWinLog "Plugin enabling completed for: $Name" -Level "Information"
     }
 }

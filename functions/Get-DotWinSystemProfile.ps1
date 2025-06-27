@@ -79,12 +79,12 @@ function Get-DotWinSystemProfile {
     )
 
     begin {
-        Write-DotWinLog "Starting comprehensive system profiling" -Level Information
+        Write-DotWinLog "Starting comprehensive system profiling" -Level "Information"
         $startTime = Get-Date
 
         # Validate PowerShell version for parallel processing
         if ($UseParallel -and $PSVersionTable.PSVersion.Major -lt 7) {
-            Write-DotWinLog "Parallel processing requires PowerShell 7+. Falling back to sequential processing." -Level Warning
+            Write-DotWinLog "Parallel processing requires PowerShell 7+. Falling back to sequential processing." -Level "Warning"
             $UseParallel = $false
         }
 
@@ -101,10 +101,10 @@ function Get-DotWinSystemProfile {
             # Create system profiler instance
             $profiler = [DotWinSystemProfiler]::new()
             
-            Write-DotWinLog "Initializing system profiler (Version: $($profiler.ProfileVersion))" -Level Information
+            Write-DotWinLog "Initializing system profiler (Version: $($profiler.ProfileVersion))" -Level "Information"
 
             if ($UseParallel -and $PSVersionTable.PSVersion.Major -ge 7) {
-                Write-DotWinLog "Using PowerShell 7+ parallel processing for enhanced performance" -Level Information
+                Write-DotWinLog "Using PowerShell 7+ parallel processing for enhanced performance" -Level "Information"
                 
                 try {
                     # Use parallel processing for profiling tasks
@@ -194,47 +194,47 @@ function Get-DotWinSystemProfile {
                                 "Software" { $profiler.Software = $result.Result }
                                 "User" { $profiler.User = $result.Result }
                             }
-                            Write-DotWinLog "Parallel $($result.Name) profiling completed successfully" -Level Information
+                            Write-DotWinLog "Parallel $($result.Name) profiling completed successfully" -Level "Information"
                         } else {
-                            Write-DotWinLog "Parallel $($result.Name) profiling failed: $($result.Error)" -Level Error
+                            Write-DotWinLog "Parallel $($result.Name) profiling failed: $($result.Error)" -Level "Error"
                             $parallelSuccess = $false
                         }
                     }
 
                     # If parallel processing failed, fall back to sequential
                     if (-not $parallelSuccess) {
-                        Write-DotWinLog "Parallel processing encountered errors, falling back to sequential processing" -Level Warning
+                        Write-DotWinLog "Parallel processing encountered errors, falling back to sequential processing" -Level "Warning"
                         $UseParallel = $false
                     }
 
                 } catch {
-                    Write-DotWinLog "Parallel processing failed: $($_.Exception.Message). Falling back to sequential processing." -Level Warning
+                    Write-DotWinLog "Parallel processing failed: $($_.Exception.Message). Falling back to sequential processing." -Level "Warning"
                     $UseParallel = $false
                 }
             }
 
             # Sequential profiling (either by choice or fallback from failed parallel processing)
             if (-not $UseParallel) {
-                Write-DotWinLog "Using sequential processing for system profiling" -Level Information
+                Write-DotWinLog "Using sequential processing for system profiling" -Level "Information"
                 
                 if ($IncludeHardware) {
-                    Write-DotWinLog "Profiling hardware components..." -Level Information
+                    Write-DotWinLog "Profiling hardware components..." -Level "Information"
                     $profiler.ProfileHardware()
                 }
                 
                 if ($IncludeSoftware) {
-                    Write-DotWinLog "Profiling software inventory..." -Level Information
+                    Write-DotWinLog "Profiling software inventory..." -Level "Information"
                     $profiler.ProfileSoftware()
                 }
                 
                 if ($IncludeUser) {
-                    Write-DotWinLog "Profiling user behavior and preferences..." -Level Information
+                    Write-DotWinLog "Profiling user behavior and preferences..." -Level "Information"
                     $profiler.ProfileUser()
                 }
             }
 
             # Calculate system metrics
-            Write-DotWinLog "Calculating system performance metrics..." -Level Information
+            Write-DotWinLog "Calculating system performance metrics..." -Level "Information"
             $profiler.CalculateSystemMetrics()
             
             # Set profiling timestamp
@@ -242,38 +242,38 @@ function Get-DotWinSystemProfile {
 
             # Export profile if requested
             if ($ExportPath) {
-                Write-DotWinLog "Exporting system profile to: $ExportPath" -Level Information
+                Write-DotWinLog "Exporting system profile to: $ExportPath" -Level "Information"
                 try {
                     $jsonProfile = $profiler.ExportToJson()
                     Set-Content -Path $ExportPath -Value $jsonProfile -Encoding UTF8
-                    Write-DotWinLog "System profile exported successfully" -Level Information
+                    Write-DotWinLog "System profile exported successfully" -Level "Information"
                 } catch {
-                    Write-DotWinLog "Failed to export system profile: $($_.Exception.Message)" -Level Error
+                    Write-DotWinLog "Failed to export system profile: $($_.Exception.Message)" -Level "Error"
                 }
             }
 
             return $profiler
 
         } catch {
-            Write-DotWinLog "Critical error during system profiling: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during system profiling: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
         $totalDuration = (Get-Date) - $startTime
-        Write-DotWinLog "System profiling completed in $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "System profiling completed in $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         # Display profiling summary
         if ($profiler -and $profiler.Hardware -and $profiler.Software -and $profiler.User -and $profiler.SystemMetrics) {
-            Write-DotWinLog "=== PROFILING SUMMARY ===" -Level Information
-            Write-DotWinLog "Hardware Category: $($profiler.Hardware.GetHardwareCategory())" -Level Information
-            Write-DotWinLog "User Type: $($profiler.Software.GetUserType())" -Level Information
-            Write-DotWinLog "Technical Level: $($profiler.User.GetTechnicalLevel())" -Level Information
-            Write-DotWinLog "Performance Score: $($profiler.SystemMetrics.PerformanceScore)" -Level Information
-            Write-DotWinLog "Optimization Potential: $($profiler.SystemMetrics.OptimizationPotential)%" -Level Information
-            Write-DotWinLog "Security Score: $($profiler.SystemMetrics.SecurityScore)" -Level Information
-            Write-DotWinLog "Developer Friendliness: $($profiler.SystemMetrics.DeveloperFriendliness)" -Level Information
+            Write-DotWinLog "=== PROFILING SUMMARY ===" -Level "Information"
+            Write-DotWinLog "Hardware Category: $($profiler.Hardware.GetHardwareCategory())" -Level "Information"
+            Write-DotWinLog "User Type: $($profiler.Software.GetUserType())" -Level "Information"
+            Write-DotWinLog "Technical Level: $($profiler.User.GetTechnicalLevel())" -Level "Information"
+            Write-DotWinLog "Performance Score: $($profiler.SystemMetrics.PerformanceScore)" -Level "Information"
+            Write-DotWinLog "Optimization Potential: $($profiler.SystemMetrics.OptimizationPotential)%" -Level "Information"
+            Write-DotWinLog "Security Score: $($profiler.SystemMetrics.SecurityScore)" -Level "Information"
+            Write-DotWinLog "Developer Friendliness: $($profiler.SystemMetrics.DeveloperFriendliness)" -Level "Information"
         }
     }
 }

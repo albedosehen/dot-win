@@ -141,32 +141,73 @@ function Install-Applications {
             switch ($PSCmdlet.ParameterSetName) {
                 'ApplicationList' {
                     $applicationsToInstall = $ApplicationList
-                    Write-DotWinLog "Processing $($ApplicationList.Count) applications from list" -Level Information -ShowWithProgress
+                    Write-DotWinLog "Processing $($ApplicationList.Count) applications from list" -Level "Information" -ShowWithProgress
                 }
 
                 'Category' {
-                    Write-DotWinLog "Loading applications from category: $Category" -Level Information -ShowWithProgress
-                    $packagesConfigPath = Join-Path $script:DotWinConfigPath "Packages.ps1"
+                    Write-DotWinLog "Loading applications from category: $Category using Configuration Bridge" -Level "Information" -ShowWithProgress
 
-                    if (Test-Path $packagesConfigPath) {
-                        . $packagesConfigPath
-                        $applicationsToInstall = Get-ApplicationsByCategory -Category $Category
-                        Write-DotWinLog "Found $($applicationsToInstall.Count) applications in category '$Category'" -Level Information -ShowWithProgress
-                    } else {
-                        Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Packages configuration file not found: $packagesConfigPath"
-                        throw "Packages configuration file not found: $packagesConfigPath"
+                    try {
+                        # Initialize Configuration Bridge if not already available
+                        if (-not $script:DotWinConfigurationBridge) {
+                            Write-DotWinLog "Initializing Configuration Bridge for package resolution" -Level "Verbose" -ShowWithProgress
+
+                            # Discover user configuration path
+                            $userConfigPath = $null
+                            try {
+                                $discoveredPaths = Get-DotWinUserConfigurationPath -ErrorAction SilentlyContinue
+                                if ($discoveredPaths -and $discoveredPaths.Count -gt 0) {
+                                    # Use the highest priority discovered path
+                                    $userConfigPath = $discoveredPaths[0].Path
+                                    Write-DotWinLog "Discovered user configuration path: $userConfigPath" -Level "Information" -ShowWithProgress
+                                } else {
+                                    Write-DotWinLog "No user configuration paths discovered; using module configuration only" -Level "Information" -ShowWithProgress
+                                }
+                            } catch {
+                                Write-DotWinLog "Error discovering user configuration paths: $($_.Exception.Message)" -Level "Warning" -ShowWithProgress
+                            }
+
+                            # Create Configuration Bridge instance
+                            $script:DotWinConfigurationBridge = New-DotWinConfigurationBridge -ModuleConfigPath $script:DotWinConfigPath -UserConfigPath $userConfigPath
+                        }
+
+                        # Resolve package configuration using Configuration Bridge
+                        Write-DotWinLog "Resolving package configuration for category: $Category" -Level "Verbose" -ShowWithProgress
+                        $packageConfiguration = Get-DotWinPackageConfiguration -Bridge $script:DotWinConfigurationBridge -Category $Category
+
+                        if ($packageConfiguration -and $packageConfiguration.Count -gt 0) {
+                            # Convert resolved configuration to application list format
+                            $applicationsToInstall = Convert-PackageConfigurationToApplicationList -PackageConfiguration $packageConfiguration -Category $Category
+                            Write-DotWinLog "Resolved $($applicationsToInstall.Count) applications from Configuration Bridge for category '$Category'" -Level "Information" -ShowWithProgress
+                        } else {
+                            Write-DotWinLog "No package configuration found for category '$Category'" -Level "Warning" -ShowWithProgress
+                            $applicationsToInstall = @()
+                        }
+                    } catch {
+                        # Fallback to legacy method if Configuration Bridge fails
+                        Write-DotWinLog "Configuration Bridge failed, falling back to legacy package loading: $($_.Exception.Message)" -Level "Warning" -ShowWithProgress
+
+                        $packagesConfigPath = Join-Path $script:DotWinConfigPath "Packages.ps1"
+                        if (Test-Path $packagesConfigPath) {
+                            . $packagesConfigPath
+                            $applicationsToInstall = Get-ApplicationsByCategory -Category $Category
+                            Write-DotWinLog "Found $($applicationsToInstall.Count) applications in category '$Category' using legacy method" -Level "Information" -ShowWithProgress
+                        } else {
+                            Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Unable to resolve package configuration for category: $Category"
+                            throw "Unable to resolve package configuration for category: $Category"
+                        }
                     }
                 }
 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading applications from configuration file: $ConfigurationPath" -Level Information -ShowWithProgress
+                    Write-DotWinLog "Loading applications from configuration file: $ConfigurationPath" -Level "Information" -ShowWithProgress
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $applicationsToInstall = $configContent.applications
                 }
             }
 
             if ($applicationsToInstall.Count -eq 0) {
-                Write-DotWinLog "No applications to install" -Level Warning -ShowWithProgress
+                Write-DotWinLog "No applications to install" -Level "Warning" -ShowWithProgress
                 Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed (no applications)" -Message "No applications to install"
                 return $results
             }
@@ -219,7 +260,7 @@ function Install-Applications {
                         $result.Changes.Configuration = $configResult.Changes
 
                         if (-not $configResult.Success) {
-                            Write-DotWinLog "Warning: Configuration failed for '$($appConfig.Name)': $($configResult.Message)" -Level Warning -ShowWithProgress
+                            Write-DotWinLog "Warning: Configuration failed for '$($appConfig.Name)': $($configResult.Message)" -Level "Warning" -ShowWithProgress
                         }
                     }
 
@@ -231,7 +272,7 @@ function Install-Applications {
                         $result.Changes.Shortcuts = $shortcutResult.Changes
 
                         if (-not $shortcutResult.Success) {
-                            Write-DotWinLog "Warning: Shortcut creation failed for '$($appConfig.Name)': $($shortcutResult.Message)" -Level Warning -ShowWithProgress
+                            Write-DotWinLog "Warning: Shortcut creation failed for '$($appConfig.Name)': $($shortcutResult.Message)" -Level "Warning" -ShowWithProgress
                         }
                     }
 
@@ -279,10 +320,10 @@ function Install-Applications {
         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
 
         # Show summary with progress coordination
-        Write-DotWinLog "Application installation completed" -Level Information -ShowWithProgress
-        Write-DotWinLog "Total applications processed: $($results.Count)" -Level Information -ShowWithProgress
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information -ShowWithProgress
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information -ShowWithProgress
+        Write-DotWinLog "Application installation completed" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Total applications processed: $($results.Count)" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information" -ShowWithProgress
 
         # Ensure we always return an array, even for single items
         if ($results -is [array]) {
@@ -433,7 +474,7 @@ function Set-VSCodeConfiguration {
             $changes.Extensions = @()
             foreach ($extension in $Configuration.Extensions) {
                 try {
-                    Write-DotWinLog "Installing VS Code extension: $extension" -Level Verbose
+                    Write-DotWinLog "Installing VS Code extension: $extension" -Level "Verbose"
                     & code --install-extension $extension --force 2>$null
                     if ($LASTEXITCODE -eq 0) {
                         $changes.Extensions += @{ Extension = $extension; Status = "Installed" }
@@ -472,7 +513,7 @@ function Set-VSCodeConfiguration {
         return $changes
 
     } catch {
-        Write-DotWinLog "Error configuring VS Code: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error configuring VS Code: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -499,7 +540,7 @@ function Set-GitConfiguration {
                     & git config --global $config.Key $config.Value
                     $changes.GlobalConfig[$config.Key] = $config.Value
                 } catch {
-                    Write-DotWinLog "Error setting Git config '$($config.Key)': $($_.Exception.Message)" -Level Warning
+                    Write-DotWinLog "Error setting Git config '$($config.Key)': $($_.Exception.Message)" -Level "Warning"
                 }
             }
         }
@@ -507,7 +548,7 @@ function Set-GitConfiguration {
         return $changes
 
     } catch {
-        Write-DotWinLog "Error configuring Git: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error configuring Git: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -531,7 +572,7 @@ function Set-PowerShellConfiguration {
             $changes.Modules = @()
             foreach ($module in $Configuration.Modules) {
                 try {
-                    Write-DotWinLog "Installing PowerShell module: $module" -Level Verbose
+                    Write-DotWinLog "Installing PowerShell module: $module" -Level "Verbose"
                     Install-Module -Name $module -Force -AllowClobber -Scope CurrentUser
                     $changes.Modules += @{ Module = $module; Status = "Installed" }
                 } catch {
@@ -543,7 +584,7 @@ function Set-PowerShellConfiguration {
         return $changes
 
     } catch {
-        Write-DotWinLog "Error configuring PowerShell: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error configuring PowerShell: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -582,7 +623,7 @@ function Set-WindowsTerminalConfiguration {
         return $changes
 
     } catch {
-        Write-DotWinLog "Error configuring Windows Terminal: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error configuring Windows Terminal: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -614,7 +655,7 @@ function Set-GenericApplicationConfiguration {
         return $changes
 
     } catch {
-        Write-DotWinLog "Error applying generic application configuration: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error applying generic application configuration: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -793,11 +834,186 @@ function Set-ApplicationRegistrySettings {
                 $changes["$keyPath\$($value.Key)"] = $value.Value
             }
         } catch {
-            Write-DotWinLog "Error setting registry value '$($setting.Key)': $($_.Exception.Message)" -Level Warning
+            Write-DotWinLog "Error setting registry value '$($setting.Key)': $($_.Exception.Message)" -Level "Warning"
         }
     }
 
     return $changes
+}
+
+function Convert-PackageConfigurationToApplicationList {
+    <#
+    .SYNOPSIS
+        Converts Configuration Bridge package configuration to application list format.
+
+    .DESCRIPTION
+        Internal helper function that converts the package configuration format returned
+        by the Configuration Bridge into the application list format expected by the
+        Install-Applications function.
+
+    .PARAMETER PackageConfiguration
+        The package configuration returned by the Configuration Bridge.
+
+    .PARAMETER Category
+        The category being processed for logging purposes.
+
+    .OUTPUTS
+        Array of application objects compatible with Install-Applications processing.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [object]$PackageConfiguration,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Category
+    )
+
+    $applications = @()
+
+    try {
+        # Handle different possible return formats from Configuration Bridge
+        if ($PackageConfiguration -is [array]) {
+            # Direct array of packages
+            foreach ($package in $PackageConfiguration) {
+                $app = Convert-SinglePackageToApplication -Package $package
+                if ($app) {
+                    $applications += $app
+                }
+            }
+        } elseif ($PackageConfiguration -is [hashtable]) {
+            # Check if it's a category-based structure
+            if ($PackageConfiguration.ContainsKey($Category)) {
+                $categoryPackages = $PackageConfiguration[$Category]
+                if ($categoryPackages -is [array]) {
+                    foreach ($package in $categoryPackages) {
+                        $app = Convert-SinglePackageToApplication -Package $package
+                        if ($app) {
+                            $applications += $app
+                        }
+                    }
+                } elseif ($categoryPackages -and $categoryPackages.Packages) {
+                    # Handle structured category format
+                    foreach ($package in $categoryPackages.Packages) {
+                        $app = Convert-SinglePackageToApplication -Package $package
+                        if ($app) {
+                            $applications += $app
+                        }
+                    }
+                }
+            } else {
+                # Treat as a single package definition
+                $app = Convert-SinglePackageToApplication -Package $PackageConfiguration
+                if ($app) {
+                    $applications += $app
+                }
+            }
+        } elseif ($PackageConfiguration -and $PackageConfiguration.PSObject.Properties) {
+            # Handle PSCustomObject
+            $app = Convert-SinglePackageToApplication -Package $PackageConfiguration
+            if ($app) {
+                $applications += $app
+            }
+        }
+
+        Write-DotWinLog "Converted $($applications.Count) packages to application format for category '$Category'" -Level "Verbose" -ShowWithProgress
+        return $applications
+
+    } catch {
+        Write-DotWinLog "Error converting package configuration to application list: $($_.Exception.Message)" -Level "Error" -ShowWithProgress
+        return @()
+    }
+}
+
+function Convert-SinglePackageToApplication {
+    <#
+    .SYNOPSIS
+        Converts a single package definition to application format.
+
+    .DESCRIPTION
+        Internal helper function that converts a single package definition from the
+        Configuration Bridge format to the application format expected by Install-Applications.
+
+    .PARAMETER Package
+        The package definition to convert.
+
+    .OUTPUTS
+        Hashtable representing the application configuration.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [object]$Package
+    )
+
+    if (-not $Package) {
+        return $null
+    }
+
+    try {
+        $application = @{}
+
+        # Handle different package definition formats
+        if ($Package -is [string]) {
+            # Simple string package ID
+            $application.Name = $Package
+            $application.PackageId = $Package
+        } elseif ($Package -is [hashtable] -or $Package.PSObject.Properties) {
+            # Structured package definition - map common properties
+
+            # Required properties
+            $application.Name = if ($Package.Name) { $Package.Name } elseif ($Package.Id) { $Package.Id } else { $Package.PackageId }
+            $application.PackageId = if ($Package.Id) { $Package.Id } elseif ($Package.PackageId) { $Package.PackageId } else { $Package.Name }
+
+            # Optional properties with mapping
+            if ($Package.Version) { $application.Version = $Package.Version }
+            if ($Package.Source) { $application.Source = $Package.Source }
+            if ($Package.Description) { $application.Description = $Package.Description }
+            if ($Package.Category) { $application.Category = $Package.Category }
+            if ($null -ne $Package.Optional) { $application.Optional = $Package.Optional }
+
+            # Configuration mapping
+            if ($Package.Configuration) {
+                $application.Configuration = $Package.Configuration
+            }
+
+            # Shortcuts mapping
+            if ($Package.Shortcuts) {
+                $application.Shortcuts = $Package.Shortcuts
+            }
+
+            # Install options mapping
+            if ($Package.InstallOptions) {
+                $application.InstallOptions = $Package.InstallOptions
+            }
+
+            # License acceptance
+            if ($null -ne $Package.AcceptLicense) { $application.AcceptLicense = $Package.AcceptLicense }
+            if ($null -ne $Package.AcceptSourceAgreements) { $application.AcceptSourceAgreements = $Package.AcceptSourceAgreements }
+        }
+
+        # Validate required properties
+        if (-not $application.PackageId) {
+            Write-DotWinLog "Package definition missing required PackageId property" -Level "Warning" -ShowWithProgress
+            return $null
+        }
+
+        if (-not $application.Name) {
+            $application.Name = $application.PackageId
+        }
+
+        # Set defaults for missing properties
+        if (-not $application.Source) { $application.Source = 'winget' }
+
+        Write-DotWinLog "Converted package '$($application.PackageId)' to application format" -Level "Verbose" -ShowWithProgress
+        return $application
+
+    } catch {
+        Write-DotWinLog "Error converting single package to application format: $($_.Exception.Message)" -Level "Warning" -ShowWithProgress
+        return $null
+    }
 }
 
 function Set-ApplicationFileSettings {
@@ -833,7 +1049,7 @@ function Set-ApplicationFileSettings {
 
             $changes[$filePath] = "Updated"
         } catch {
-            Write-DotWinLog "Error setting file '$($setting.Key)': $($_.Exception.Message)" -Level Warning
+            Write-DotWinLog "Error setting file '$($setting.Key)': $($_.Exception.Message)" -Level "Warning"
         }
     }
 

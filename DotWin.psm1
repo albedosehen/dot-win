@@ -114,6 +114,23 @@ $PublicFunctions = @(
     'New-DotWinConfigurationTemplate'
 )
 
+# Configuration Bridge functions (Phase 1 implementation)
+$ConfigurationBridgeFunctions = @(
+    'New-DotWinConfigurationBridge',
+    'Get-DotWinPackageConfiguration',
+    'Get-DotWinTerminalConfiguration',
+    'Get-DotWinProfileConfiguration',
+    'Clear-DotWinConfigurationCache',
+    'Set-DotWinConfigurationCacheEnabled',
+    'Get-DotWinConfigurationCacheStatistics'
+)
+
+# User Configuration Discovery functions (Phase 1 implementation)
+$UserConfigurationFunctions = @(
+    'Get-DotWinUserConfigurationPath',
+    'Initialize-DotWinUserConfiguration'
+)
+
 # Progress system functions (exported for public use)
 $ProgressFunctions = @(
     'Write-DotWinProgress',
@@ -131,7 +148,25 @@ foreach ($Function in $PublicFunctions) {
     }
 }
 
-# Internal helper functions
+# Load Configuration Bridge functions
+$ConfigurationBridgePath = Join-Path $PSScriptRoot "functions\ConfigurationBridge.ps1"
+if (Test-Path $ConfigurationBridgePath) {
+    Write-Verbose "Loading Configuration Bridge functions"
+    . $ConfigurationBridgePath
+} else {
+    Write-Warning "Configuration Bridge file not found: $ConfigurationBridgePath"
+}
+
+# Load User Configuration Discovery functions
+$UserConfigurationPath = Join-Path $PSScriptRoot "functions\UserConfigurationDiscovery.ps1"
+if (Test-Path $UserConfigurationPath) {
+    Write-Verbose "Loading User Configuration Discovery functions"
+    . $UserConfigurationPath
+} else {
+    Write-Warning "User Configuration Discovery file not found: $UserConfigurationPath"
+}
+
+# Internal helper functions (moved before Configuration Bridge initialization)
 function Write-DotWinLog {
     [CmdletBinding()]
     param(
@@ -179,6 +214,16 @@ function Write-DotWinLog {
         Add-Content -Path $script:DotWinLogPath -Value $logMessage
     }
 }
+# Initialize Configuration Bridge system
+try {
+    Write-Verbose "Initializing Configuration Bridge system..."
+    $script:DotWinConfigurationBridge = New-DotWinConfigurationBridge -ModuleConfigPath $script:DotWinConfigPath
+    Write-Verbose "Configuration Bridge initialized successfully"
+} catch {
+    Write-Warning "Failed to initialize Configuration Bridge: $($_.Exception.Message)"
+    $script:DotWinConfigurationBridge = $null
+}
+
 
 # Core progress functions
 function Write-DotWinProgress {
@@ -379,7 +424,7 @@ function Complete-DotWinProgress {
 
 
 # Export module members
-Export-ModuleMember -Function ($PublicFunctions + $ProgressFunctions)
+Export-ModuleMember -Function ($PublicFunctions + $ProgressFunctions + $ConfigurationBridgeFunctions + $UserConfigurationFunctions)
 Export-ModuleMember -Variable @()
 
 Write-Verbose "DotWin module initialization complete."

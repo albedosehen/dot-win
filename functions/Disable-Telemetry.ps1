@@ -89,7 +89,7 @@ function Disable-Telemetry {
     )
 
     begin {
-        Write-DotWinLog "Starting telemetry disabling process" -Level Information
+        Write-DotWinLog "Starting telemetry disabling process" -Level "Information"
         
         # Validate environment
         $envTest = Test-DotWinEnvironment
@@ -113,30 +113,30 @@ function Disable-Telemetry {
 
             switch ($PSCmdlet.ParameterSetName) {
                 'Level' {
-                    Write-DotWinLog "Loading telemetry settings for level: $Level" -Level Information
+                    Write-DotWinLog "Loading telemetry settings for level: $Level" -Level "Information"
                     $telemetrySettings = Get-TelemetrySettingsByLevel -Level $Level
-                    Write-DotWinLog "Found $($telemetrySettings.Count) telemetry settings for level '$Level'" -Level Information
+                    Write-DotWinLog "Found $($telemetrySettings.Count) telemetry settings for level '$Level'" -Level "Information"
                 }
                 
                 'Category' {
-                    Write-DotWinLog "Loading telemetry settings from category: $Category" -Level Information
+                    Write-DotWinLog "Loading telemetry settings from category: $Category" -Level "Information"
                     $telemetrySettings = Get-TelemetrySettingsByCategory -Category $Category
-                    Write-DotWinLog "Found $($telemetrySettings.Count) telemetry settings in category '$Category'" -Level Information
+                    Write-DotWinLog "Found $($telemetrySettings.Count) telemetry settings in category '$Category'" -Level "Information"
                 }
                 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading telemetry settings from configuration file: $ConfigurationPath" -Level Information
+                    Write-DotWinLog "Loading telemetry settings from configuration file: $ConfigurationPath" -Level "Information"
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $telemetrySettings = $configContent.telemetrySettings
                 }
             }
 
             if ($telemetrySettings.Count -eq 0) {
-                Write-DotWinLog "No telemetry settings to apply" -Level Warning
+                Write-DotWinLog "No telemetry settings to apply" -Level "Warning"
                 return $results
             }
 
-            Write-DotWinLog "Applying $($telemetrySettings.Count) telemetry configuration changes" -Level Information
+            Write-DotWinLog "Applying $($telemetrySettings.Count) telemetry configuration changes" -Level "Information"
 
             # Process each telemetry setting
             foreach ($setting in $telemetrySettings) {
@@ -146,7 +146,7 @@ function Disable-Telemetry {
                 $result.ItemType = "TelemetryConfiguration"
                 
                 try {
-                    Write-DotWinLog "Processing telemetry setting: $($setting.Name)" -Level Information
+                    Write-DotWinLog "Processing telemetry setting: $($setting.Name)" -Level "Information"
                     
                     # Create telemetry configuration item
                     $telemetryItem = [DotWinTelemetryConfiguration]::new($setting.Name)
@@ -164,13 +164,13 @@ function Disable-Telemetry {
                     if ($currentlyDisabled -and -not $Force) {
                         $result.Success = $true
                         $result.Message = "Telemetry setting already disabled"
-                        Write-DotWinLog "Telemetry setting '$($setting.Name)' already disabled" -Level Information
+                        Write-DotWinLog "Telemetry setting '$($setting.Name)' already disabled" -Level "Information"
                         continue
                     }
                     
                     # Apply the telemetry configuration
                     if ($PSCmdlet.ShouldProcess($setting.Name, "Disable telemetry setting")) {
-                        Write-DotWinLog "Disabling telemetry setting: $($setting.Name)" -Level Information
+                        Write-DotWinLog "Disabling telemetry setting: $($setting.Name)" -Level "Information"
                         
                         # Get current state for comparison
                         $beforeState = $telemetryItem.GetCurrentState()
@@ -187,17 +187,17 @@ function Disable-Telemetry {
                         
                         $result.Success = $true
                         $result.Message = "Telemetry setting disabled successfully"
-                        Write-DotWinLog "Successfully disabled telemetry setting: $($setting.Name)" -Level Information
+                        Write-DotWinLog "Successfully disabled telemetry setting: $($setting.Name)" -Level "Information"
                     } else {
                         $result.Success = $true
                         $result.Message = "Telemetry setting change skipped (WhatIf)"
-                        Write-DotWinLog "Telemetry setting change skipped: $($setting.Name) (WhatIf)" -Level Information
+                        Write-DotWinLog "Telemetry setting change skipped: $($setting.Name) (WhatIf)" -Level "Information"
                     }
                     
                 } catch {
                     $result.Success = $false
                     $result.Message = "Error disabling telemetry setting: $($_.Exception.Message)"
-                    Write-DotWinLog "Error disabling telemetry setting '$($setting.Name)': $($_.Exception.Message)" -Level Error
+                    Write-DotWinLog "Error disabling telemetry setting '$($setting.Name)': $($_.Exception.Message)" -Level "Error"
                 } finally {
                     $result.Duration = (Get-Date) - $settingStartTime
                     $results += $result
@@ -205,7 +205,7 @@ function Disable-Telemetry {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during telemetry disabling: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during telemetry disabling: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -215,12 +215,12 @@ function Disable-Telemetry {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
         
-        Write-DotWinLog "Telemetry disabling completed" -Level Information
-        Write-DotWinLog "Total settings processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Telemetry disabling completed" -Level "Information"
+        Write-DotWinLog "Total settings processed: $($results.Count)" -Level "Information"
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information"
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
-        Write-DotWinLog "Note: Some telemetry changes may require a system restart to take effect" -Level Information
+        Write-DotWinLog "Note: Some telemetry changes may require a system restart to take effect" -Level "Information"
         
         return $results
     }
@@ -290,10 +290,10 @@ function Set-TelemetryRegistrySetting {
         # Set registry value
         Set-ItemProperty -Path $Path -Name $Name -Value $Value -Type $Type -Force
         
-        Write-DotWinLog "Set registry value: $Path\$Name = $Value" -Level Verbose
+        Write-DotWinLog "Set registry value: $Path\$Name = $Value" -Level "Verbose"
         
     } catch {
-        Write-DotWinLog "Error setting registry value '$Path\$Name': $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error setting registry value '$Path\$Name': $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -336,22 +336,22 @@ function Set-TelemetryServiceSetting {
     try {
         $service = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
         if (-not $service) {
-            Write-DotWinLog "Service '$ServiceName' not found" -Level Verbose
+            Write-DotWinLog "Service '$ServiceName' not found" -Level "Verbose"
             return
         }
         
         # Stop the service if running
         if ($service.Status -eq 'Running') {
             Stop-Service -Name $ServiceName -Force
-            Write-DotWinLog "Stopped service: $ServiceName" -Level Verbose
+            Write-DotWinLog "Stopped service: $ServiceName" -Level "Verbose"
         }
         
         # Disable the service
         Set-Service -Name $ServiceName -StartupType Disabled
-        Write-DotWinLog "Disabled service: $ServiceName" -Level Verbose
+        Write-DotWinLog "Disabled service: $ServiceName" -Level "Verbose"
         
     } catch {
-        Write-DotWinLog "Error disabling service '$ServiceName': $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error disabling service '$ServiceName': $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -400,16 +400,16 @@ function Set-TelemetryTaskSetting {
     try {
         $task = Get-ScheduledTask -TaskPath $TaskPath -TaskName $TaskName -ErrorAction SilentlyContinue
         if (-not $task) {
-            Write-DotWinLog "Scheduled task '$TaskPath\$TaskName' not found" -Level Verbose
+            Write-DotWinLog "Scheduled task '$TaskPath\$TaskName' not found" -Level "Verbose"
             return
         }
         
         # Disable the scheduled task
         Disable-ScheduledTask -TaskPath $TaskPath -TaskName $TaskName
-        Write-DotWinLog "Disabled scheduled task: $TaskPath\$TaskName" -Level Verbose
+        Write-DotWinLog "Disabled scheduled task: $TaskPath\$TaskName" -Level "Verbose"
         
     } catch {
-        Write-DotWinLog "Error disabling scheduled task '$TaskPath\$TaskName': $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error disabling scheduled task '$TaskPath\$TaskName': $($_.Exception.Message)" -Level "Error"
         throw
     }
 }
@@ -536,7 +536,7 @@ function Get-TelemetrySettingsByLevel {
         'Standard' { return $standardSettings }
         'Aggressive' { return $aggressiveSettings }
         default {
-            Write-DotWinLog "Unknown telemetry level: $Level" -Level Warning
+            Write-DotWinLog "Unknown telemetry level: $Level" -Level "Warning"
             return @()
         }
     }
@@ -690,7 +690,7 @@ function Get-TelemetrySettingsByCategory {
     if ($categorySettings.ContainsKey($Category)) {
         return $categorySettings[$Category]
     } else {
-        Write-DotWinLog "Unknown telemetry category: $Category" -Level Warning
+        Write-DotWinLog "Unknown telemetry category: $Category" -Level "Warning"
         return @()
     }
 }
@@ -711,7 +711,7 @@ function Get-TelemetryStatus {
     param()
     
     try {
-        Write-DotWinLog "Retrieving telemetry status" -Level Information
+        Write-DotWinLog "Retrieving telemetry status" -Level "Information"
         
         $status = @{
             DiagnosticData = "Unknown"
@@ -805,11 +805,11 @@ function Get-TelemetryStatus {
             }
         }
 
-        Write-DotWinLog "Retrieved telemetry status successfully" -Level Information
+        Write-DotWinLog "Retrieved telemetry status successfully" -Level "Information"
         return $status
 
     } catch {
-        Write-DotWinLog "Error retrieving telemetry status: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error retrieving telemetry status: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }

@@ -116,7 +116,7 @@ function Export-DotWinConfiguration {
     )
 
     begin {
-        Write-DotWinLog "Starting system configuration export" -Level Information
+        Write-DotWinLog "Starting system configuration export" -Level "Information"
         $startTime = Get-Date
 
         # Check if output file exists and Force is not specified
@@ -127,7 +127,7 @@ function Export-DotWinConfiguration {
         # Validate environment
         $envTest = Test-DotWinEnvironment
         if (-not $envTest.IsValid) {
-            Write-DotWinLog "Environment validation warnings: $($envTest.Issues -join ', ')" -Level Warning
+            Write-DotWinLog "Environment validation warnings: $($envTest.Issues -join ', ')" -Level "Warning"
         }
     }
 
@@ -135,7 +135,7 @@ function Export-DotWinConfiguration {
         # Handle pipeline input for system data
         if ($InputObject) {
             if ($InputObject.GetType().Name -eq 'DotWinSystemStatus') {
-                Write-DotWinLog "Received DotWinSystemStatus from pipeline, using system information" -Level Information
+                Write-DotWinLog "Received DotWinSystemStatus from pipeline, using system information" -Level "Information"
                 # Extract system information from status object
                 if ($InputObject.ConfigurationStatus -and $InputObject.ConfigurationStatus.SystemInfo) {
                     $IncludeSettings = $true
@@ -143,7 +143,7 @@ function Export-DotWinConfiguration {
                     $IncludeMetadata = $true
                 }
             } elseif ($InputObject.GetType().Name -eq 'DotWinSystemProfiler') {
-                Write-DotWinLog "Received DotWinSystemProfiler from pipeline" -Level Information
+                Write-DotWinLog "Received DotWinSystemProfiler from pipeline" -Level "Information"
                 $IncludePackages = $true
                 $IncludeSettings = $true
                 $IncludeMetadata = $true
@@ -172,7 +172,7 @@ function Export-DotWinConfiguration {
 
                 # Add detailed metadata if requested
                 if ($IncludeMetadata) {
-                    Write-DotWinLog "Gathering detailed system metadata" -Level Information
+                    Write-DotWinLog "Gathering detailed system metadata" -Level "Information"
                     
                     try {
                         $systemInfo = Get-CimInstance Win32_ComputerSystem
@@ -189,19 +189,19 @@ function Export-DotWinConfiguration {
                             }
                         }
                     } catch {
-                        Write-DotWinLog "Could not gather detailed system metadata: $($_.Exception.Message)" -Level Warning
+                        Write-DotWinLog "Could not gather detailed system metadata: $($_.Exception.Message)" -Level "Warning"
                     }
                 }
 
                 # Export installed packages
                 if ($IncludePackages) {
-                    Write-DotWinLog "Exporting installed packages" -Level Information
+                    Write-DotWinLog "Exporting installed packages" -Level "Information"
                     
                     $packageItems = @()
                     
                     # Export Winget packages
                     if ($PackageSource -contains 'All' -or $PackageSource -contains 'Winget') {
-                        Write-DotWinLog "Scanning Winget packages" -Level Verbose
+                        Write-DotWinLog "Scanning Winget packages" -Level "Verbose"
                         try {
                             $wingetList = winget list --accept-source-agreements 2>$null | Out-String
                             if ($wingetList -and $wingetList -notlike "*No installed package found*") {
@@ -235,17 +235,17 @@ function Export-DotWinConfiguration {
                                             acceptSourceAgreements = $true
                                         }
                                     }
-                                    Write-DotWinLog "Found $($wingetPackages.Count) Winget packages" -Level Information
+                                    Write-DotWinLog "Found $($wingetPackages.Count) Winget packages" -Level "Information"
                                 }
                             }
                         } catch {
-                            Write-DotWinLog "Error scanning Winget packages: $($_.Exception.Message)" -Level Warning
+                            Write-DotWinLog "Error scanning Winget packages: $($_.Exception.Message)" -Level "Warning"
                         }
                     }
 
                     # Export Chocolatey packages
                     if ($PackageSource -contains 'All' -or $PackageSource -contains 'Chocolatey') {
-                        Write-DotWinLog "Scanning Chocolatey packages" -Level Verbose
+                        Write-DotWinLog "Scanning Chocolatey packages" -Level "Verbose"
                         try {
                             $chocoList = choco list --local-only 2>$null | Out-String
                             if ($chocoList) {
@@ -269,17 +269,17 @@ function Export-DotWinConfiguration {
                                             packages = $chocoPackages
                                         }
                                     }
-                                    Write-DotWinLog "Found $($chocoPackages.Count) Chocolatey packages" -Level Information
+                                    Write-DotWinLog "Found $($chocoPackages.Count) Chocolatey packages" -Level "Information"
                                 }
                             }
                         } catch {
-                            Write-DotWinLog "Chocolatey not available or error scanning packages" -Level Verbose
+                            Write-DotWinLog "Chocolatey not available or error scanning packages" -Level "Verbose"
                         }
                     }
 
                     # Export Scoop packages
                     if ($PackageSource -contains 'All' -or $PackageSource -contains 'Scoop') {
-                        Write-DotWinLog "Scanning Scoop packages" -Level Verbose
+                        Write-DotWinLog "Scanning Scoop packages" -Level "Verbose"
                         try {
                             $scoopList = scoop list 2>$null | Out-String
                             if ($scoopList) {
@@ -303,11 +303,11 @@ function Export-DotWinConfiguration {
                                             packages = $scoopPackages
                                         }
                                     }
-                                    Write-DotWinLog "Found $($scoopPackages.Count) Scoop packages" -Level Information
+                                    Write-DotWinLog "Found $($scoopPackages.Count) Scoop packages" -Level "Information"
                                 }
                             }
                         } catch {
-                            Write-DotWinLog "Scoop not available or error scanning packages" -Level Verbose
+                            Write-DotWinLog "Scoop not available or error scanning packages" -Level "Verbose"
                         }
                     }
 
@@ -316,7 +316,7 @@ function Export-DotWinConfiguration {
 
                 # Export Windows Features
                 if ($IncludeFeatures) {
-                    Write-DotWinLog "Exporting Windows features" -Level Information
+                    Write-DotWinLog "Exporting Windows features" -Level "Information"
                     
                     try {
                         $enabledFeatures = Get-WindowsOptionalFeature -Online | Where-Object { $_.State -eq 'Enabled' }
@@ -333,16 +333,16 @@ function Export-DotWinConfiguration {
                                     features = $featureNames
                                 }
                             }
-                            Write-DotWinLog "Found $($featureNames.Count) enabled Windows features" -Level Information
+                            Write-DotWinLog "Found $($featureNames.Count) enabled Windows features" -Level "Information"
                         }
                     } catch {
-                        Write-DotWinLog "Error exporting Windows features: $($_.Exception.Message)" -Level Warning
+                        Write-DotWinLog "Error exporting Windows features: $($_.Exception.Message)" -Level "Warning"
                     }
                 }
 
                 # Export system settings
                 if ($IncludeSettings) {
-                    Write-DotWinLog "Exporting system settings" -Level Information
+                    Write-DotWinLog "Exporting system settings" -Level "Information"
                     
                     try {
                         # Export power settings
@@ -382,7 +382,7 @@ function Export-DotWinConfiguration {
                                 }
                             }
                         } catch {
-                            Write-DotWinLog "Could not read UAC setting" -Level Verbose
+                            Write-DotWinLog "Could not read UAC setting" -Level "Verbose"
                         }
 
                         if ($registrySettings.Count -gt 0) {
@@ -397,13 +397,13 @@ function Export-DotWinConfiguration {
                             }
                         }
                     } catch {
-                        Write-DotWinLog "Error exporting system settings: $($_.Exception.Message)" -Level Warning
+                        Write-DotWinLog "Error exporting system settings: $($_.Exception.Message)" -Level "Warning"
                     }
                 }
 
                 # Export user profile configurations
                 if ($IncludeUserProfile) {
-                    Write-DotWinLog "Exporting user profile configurations" -Level Information
+                    Write-DotWinLog "Exporting user profile configurations" -Level "Information"
                     
                     # Check PowerShell profile
                     $psProfilePath = $PROFILE.CurrentUserCurrentHost
@@ -419,7 +419,7 @@ function Export-DotWinConfiguration {
                                 profilePath = $psProfilePath
                             }
                         }
-                        Write-DotWinLog "PowerShell profile found and included" -Level Information
+                        Write-DotWinLog "PowerShell profile found and included" -Level "Information"
                     }
 
                     # Check Windows Terminal settings
@@ -435,7 +435,7 @@ function Export-DotWinConfiguration {
                                 settingsPath = $terminalSettingsPath
                             }
                         }
-                        Write-DotWinLog "Windows Terminal settings found and included" -Level Information
+                        Write-DotWinLog "Windows Terminal settings found and included" -Level "Information"
                     }
                 }
 
@@ -461,27 +461,27 @@ function Export-DotWinConfiguration {
                 )
 
                 # Convert to JSON and save
-                Write-DotWinLog "Saving configuration to: $OutputPath" -Level Information
+                Write-DotWinLog "Saving configuration to: $OutputPath" -Level "Information"
                 $jsonContent = $exportConfig | ConvertTo-Json -Depth 10
                 Set-Content -Path $OutputPath -Value $jsonContent -Encoding UTF8
                 
-                Write-DotWinLog "Configuration exported successfully" -Level Information
-                Write-DotWinLog "Configuration contains $($exportConfig.items.Count) items" -Level Information
+                Write-DotWinLog "Configuration exported successfully" -Level "Information"
+                Write-DotWinLog "Configuration contains $($exportConfig.items.Count) items" -Level "Information"
                 
                 return $OutputPath
             } else {
-                Write-DotWinLog "Export operation cancelled (WhatIf)" -Level Information
+                Write-DotWinLog "Export operation cancelled (WhatIf)" -Level "Information"
                 return $null
             }
 
         } catch {
-            Write-DotWinLog "Error during configuration export: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error during configuration export: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
         $totalDuration = (Get-Date) - $startTime
-        Write-DotWinLog "Configuration export completed in $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Configuration export completed in $($totalDuration.TotalSeconds) seconds" -Level "Information"
     }
 }

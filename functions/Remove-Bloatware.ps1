@@ -99,7 +99,7 @@ function Remove-Bloatware {
 
             # Check for administrator privileges
             if (-not $envTest.IsAdministrator) {
-                Write-DotWinLog "Administrator privileges recommended for complete bloatware removal" -Level Warning
+                Write-DotWinLog "Administrator privileges recommended for complete bloatware removal" -Level "Warning"
             }
 
             $results = @()
@@ -138,7 +138,7 @@ function Remove-Bloatware {
             }
 
             if ($applicationsToRemove.Count -eq 0) {
-                Write-DotWinLog "No bloatware applications to remove" -Level Warning
+                Write-DotWinLog "No bloatware applications to remove" -Level "Warning"
                 Write-Progress -Activity "Remove Bloatware" -Status "No applications to remove" -Id 1 -Completed
                 return $results
             }
@@ -202,7 +202,7 @@ function Remove-Bloatware {
                 } catch {
                     $result.Success = $false
                     $result.Message = "Error removing bloatware application: $($_.Exception.Message)"
-                    Write-DotWinLog "Error removing bloatware application '$appName': $($_.Exception.Message)" -Level Error
+                    Write-DotWinLog "Error removing bloatware application '$appName': $($_.Exception.Message)" -Level "Error"
                 } finally {
                     $result.Duration = (Get-Date) - $appStartTime
                     $results += $result
@@ -210,7 +210,7 @@ function Remove-Bloatware {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during bloatware removal: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during bloatware removal: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -239,11 +239,11 @@ function Remove-Bloatware {
         }
 
         # Show summary in console (these are important final results)
-        Write-DotWinLog "Bloatware removal completed" -Level Information
-        Write-DotWinLog "Total applications processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Actually removed: $removedApps, Already removed: $alreadyRemoved" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Bloatware removal completed" -Level "Information"
+        Write-DotWinLog "Total applications processed: $($results.Count)" -Level "Information"
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information"
+        Write-DotWinLog "Actually removed: $removedApps, Already removed: $alreadyRemoved" -Level "Information"
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         # Return results
         return $results

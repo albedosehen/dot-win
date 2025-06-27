@@ -119,7 +119,7 @@ function Invoke-DotWinProfiledConfiguration {
     )
 
     begin {
-        Write-DotWinLog "Starting profiled configuration application" -Level Information
+        Write-DotWinLog "Starting profiled configuration application" -Level "Information"
         $startTime = Get-Date
         
         # Validate environment
@@ -143,7 +143,7 @@ function Invoke-DotWinProfiledConfiguration {
 
         # Validate PowerShell version for parallel processing
         if ($UseParallel -and $PSVersionTable.PSVersion.Major -lt 7) {
-            Write-DotWinLog "Parallel processing requires PowerShell 7+. Falling back to sequential processing." -Level Warning
+            Write-DotWinLog "Parallel processing requires PowerShell 7+. Falling back to sequential processing." -Level "Warning"
             $UseParallel = $false
         }
     }
@@ -152,7 +152,7 @@ function Invoke-DotWinProfiledConfiguration {
         try {
             # Step 1: System Profiling
             if ($ProfileFirst) {
-                Write-DotWinLog "=== PHASE 1: SYSTEM PROFILING ===" -Level Information
+                Write-DotWinLog "=== PHASE 1: SYSTEM PROFILING ===" -Level "Information"
                 
                 $profileParams = @{
                     UseParallel = $UseParallel
@@ -169,15 +169,15 @@ function Invoke-DotWinProfiledConfiguration {
                     throw "Failed to generate system profile"
                 }
                 
-                Write-DotWinLog "System profiling completed successfully" -Level Information
-                Write-DotWinLog "Hardware Category: $($result.SystemProfile.Hardware.GetHardwareCategory())" -Level Information
-                Write-DotWinLog "User Type: $($result.SystemProfile.Software.GetUserType())" -Level Information
-                Write-DotWinLog "Performance Score: $($result.SystemProfile.SystemMetrics.PerformanceScore)" -Level Information
+                Write-DotWinLog "System profiling completed successfully" -Level "Information"
+                Write-DotWinLog "Hardware Category: $($result.SystemProfile.Hardware.GetHardwareCategory())" -Level "Information"
+                Write-DotWinLog "User Type: $($result.SystemProfile.Software.GetUserType())" -Level "Information"
+                Write-DotWinLog "Performance Score: $($result.SystemProfile.SystemMetrics.PerformanceScore)" -Level "Information"
             }
 
             # Step 2: Generate Recommendations
             if ($ApplyRecommendations -and $result.SystemProfile) {
-                Write-DotWinLog "=== PHASE 2: RECOMMENDATION GENERATION ===" -Level Information
+                Write-DotWinLog "=== PHASE 2: RECOMMENDATION GENERATION ===" -Level "Information"
                 
                 $recommendationParams = @{
                     SystemProfile = $result.SystemProfile
@@ -192,12 +192,12 @@ function Invoke-DotWinProfiledConfiguration {
                 
                 $result.Recommendations = Get-DotWinRecommendations @recommendationParams
                 
-                Write-DotWinLog "Generated $($result.Recommendations.Count) recommendations" -Level Information
+                Write-DotWinLog "Generated $($result.Recommendations.Count) recommendations" -Level "Information"
             }
 
             # Step 3: Create Backup (if requested)
             if ($BackupConfiguration) {
-                Write-DotWinLog "=== PHASE 3: CONFIGURATION BACKUP ===" -Level Information
+                Write-DotWinLog "=== PHASE 3: CONFIGURATION BACKUP ===" -Level "Information"
                 
                 try {
                     $backupPath = Join-Path $env:TEMP "DotWin_Backup_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
@@ -220,7 +220,7 @@ function Invoke-DotWinProfiledConfiguration {
                                 $backupData.InstalledPackages.Winget = $wingetList
                             }
                         } catch {
-                            Write-DotWinLog "Warning: Could not backup Winget packages: $($_.Exception.Message)" -Level Warning
+                            Write-DotWinLog "Warning: Could not backup Winget packages: $($_.Exception.Message)" -Level "Warning"
                         }
                     }
                     
@@ -230,10 +230,10 @@ function Invoke-DotWinProfiledConfiguration {
                     Set-Content -Path $backupFile -Value $backupJson -Encoding UTF8
                     
                     $result.BackupPath = $backupPath
-                    Write-DotWinLog "System backup created at: $backupPath" -Level Information
+                    Write-DotWinLog "System backup created at: $backupPath" -Level "Information"
                     
                 } catch {
-                    Write-DotWinLog "Warning: Failed to create backup: $($_.Exception.Message)" -Level Warning
+                    Write-DotWinLog "Warning: Failed to create backup: $($_.Exception.Message)" -Level "Warning"
                     if ($RollbackOnFailure) {
                         throw "Backup creation failed and rollback is enabled"
                     }
@@ -242,7 +242,7 @@ function Invoke-DotWinProfiledConfiguration {
 
             # Step 4: Apply Base Configuration
             if ($PSCmdlet.ParameterSetName -eq 'Path' -or $Configuration) {
-                Write-DotWinLog "=== PHASE 4: BASE CONFIGURATION APPLICATION ===" -Level Information
+                Write-DotWinLog "=== PHASE 4: BASE CONFIGURATION APPLICATION ===" -Level "Information"
                 
                 $configParams = @{
                     WhatIf = $WhatIfPreference
@@ -258,13 +258,13 @@ function Invoke-DotWinProfiledConfiguration {
                 # Apply configuration with profiling context
                 if ($result.SystemProfile) {
                     # Enhance configuration based on profile
-                    Write-DotWinLog "Enhancing configuration based on system profile..." -Level Information
+                    Write-DotWinLog "Enhancing configuration based on system profile..." -Level "Information"
                     
                     # Add profile-specific optimizations
                     $hardwareCategory = $result.SystemProfile.Hardware.GetHardwareCategory()
                     $userType = $result.SystemProfile.Software.GetUserType()
                     
-                    Write-DotWinLog "Applying $hardwareCategory hardware optimizations for $userType user" -Level Information
+                    Write-DotWinLog "Applying $hardwareCategory hardware optimizations for $userType user" -Level "Information"
                 }
                 
                 $result.ConfigurationResults = Invoke-DotWinConfiguration @configParams
@@ -272,7 +272,7 @@ function Invoke-DotWinProfiledConfiguration {
                 $successCount = ($result.ConfigurationResults | Where-Object { $_.Success }).Count
                 $failureCount = ($result.ConfigurationResults | Where-Object { -not $_.Success }).Count
                 
-                Write-DotWinLog "Base configuration applied: $successCount successful, $failureCount failed" -Level Information
+                Write-DotWinLog "Base configuration applied: $successCount successful, $failureCount failed" -Level "Information"
                 
                 # Check for critical failures
                 if ($RollbackOnFailure -and $failureCount -gt 0) {
@@ -288,14 +288,14 @@ function Invoke-DotWinProfiledConfiguration {
 
             # Step 5: Apply Recommendations
             if ($ApplyRecommendations -and $result.Recommendations.Count -gt 0) {
-                Write-DotWinLog "=== PHASE 5: RECOMMENDATION APPLICATION ===" -Level Information
+                Write-DotWinLog "=== PHASE 5: RECOMMENDATION APPLICATION ===" -Level "Information"
                 
                 $recommendationEngine = [DotWinRecommendationEngine]::new($result.SystemProfile)
                 $appliedRecommendations = @()
                 
                 foreach ($recommendation in $result.Recommendations) {
                     if ($PSCmdlet.ShouldProcess($recommendation.Title, "Apply Recommendation")) {
-                        Write-DotWinLog "Applying recommendation: $($recommendation.Title)" -Level Information
+                        Write-DotWinLog "Applying recommendation: $($recommendation.Title)" -Level "Information"
                         
                         try {
                             $recResult = $recommendationEngine.ApplyRecommendation($recommendation)
@@ -303,27 +303,27 @@ function Invoke-DotWinProfiledConfiguration {
                             
                             if ($recResult.Success) {
                                 $appliedRecommendations += $recommendation
-                                Write-DotWinLog "Successfully applied: $($recommendation.Title)" -Level Information
+                                Write-DotWinLog "Successfully applied: $($recommendation.Title)" -Level "Information"
                             } else {
-                                Write-DotWinLog "Failed to apply: $($recommendation.Title) - $($recResult.Message)" -Level Warning
+                                Write-DotWinLog "Failed to apply: $($recommendation.Title) - $($recResult.Message)" -Level "Warning"
                             }
                             
                         } catch {
-                            Write-DotWinLog "Error applying recommendation '$($recommendation.Title)': $($_.Exception.Message)" -Level Error
+                            Write-DotWinLog "Error applying recommendation '$($recommendation.Title)': $($_.Exception.Message)" -Level "Error"
                             
                             if ($RollbackOnFailure) {
                                 throw "Recommendation application failed and rollback is enabled"
                             }
                         }
                     } else {
-                        Write-DotWinLog "Skipped recommendation: $($recommendation.Title) (WhatIf)" -Level Information
+                        Write-DotWinLog "Skipped recommendation: $($recommendation.Title) (WhatIf)" -Level "Information"
                     }
                 }
                 
                 $recSuccessCount = ($result.RecommendationResults | Where-Object { $_.Success }).Count
                 $recFailureCount = ($result.RecommendationResults | Where-Object { -not $_.Success }).Count
                 
-                Write-DotWinLog "Recommendations applied: $recSuccessCount successful, $recFailureCount failed" -Level Information
+                Write-DotWinLog "Recommendations applied: $recSuccessCount successful, $recFailureCount failed" -Level "Information"
             }
 
             # Step 6: Generate Summary
@@ -346,16 +346,16 @@ function Invoke-DotWinProfiledConfiguration {
             $result.Success = $false
             $result.Message = "Error during profiled configuration: $($_.Exception.Message)"
             
-            Write-DotWinLog "Critical error during profiled configuration: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during profiled configuration: $($_.Exception.Message)" -Level "Error"
             
             # Attempt rollback if enabled and backup exists
             if ($RollbackOnFailure -and $result.BackupPath) {
-                Write-DotWinLog "Attempting automatic rollback..." -Level Warning
+                Write-DotWinLog "Attempting automatic rollback..." -Level "Warning"
                 try {
                     # Implement rollback logic here
-                    Write-DotWinLog "Rollback completed" -Level Information
+                    Write-DotWinLog "Rollback completed" -Level "Information"
                 } catch {
-                    Write-DotWinLog "Rollback failed: $($_.Exception.Message)" -Level Error
+                    Write-DotWinLog "Rollback failed: $($_.Exception.Message)" -Level "Error"
                 }
             }
             
@@ -366,17 +366,17 @@ function Invoke-DotWinProfiledConfiguration {
     end {
         $result.Duration = (Get-Date) - $startTime
         
-        Write-DotWinLog "=== PROFILED CONFIGURATION SUMMARY ===" -Level Information
-        Write-DotWinLog "Total Duration: $($result.Duration.TotalSeconds) seconds" -Level Information
-        Write-DotWinLog "Success: $($result.Success)" -Level Information
+        Write-DotWinLog "=== PROFILED CONFIGURATION SUMMARY ===" -Level "Information"
+        Write-DotWinLog "Total Duration: $($result.Duration.TotalSeconds) seconds" -Level "Information"
+        Write-DotWinLog "Success: $($result.Success)" -Level "Information"
         
         if ($result.Summary) {
-            Write-DotWinLog "Hardware Category: $($result.Summary.HardwareCategory)" -Level Information
-            Write-DotWinLog "User Type: $($result.Summary.UserType)" -Level Information
-            Write-DotWinLog "Performance Score: $($result.Summary.PerformanceScore)" -Level Information
-            Write-DotWinLog "Optimization Potential: $($result.Summary.OptimizationPotential)%" -Level Information
-            Write-DotWinLog "Configuration Items Applied: $($result.Summary.ConfigurationItemsApplied)" -Level Information
-            Write-DotWinLog "Recommendations Applied: $($result.Summary.RecommendationsApplied)" -Level Information
+            Write-DotWinLog "Hardware Category: $($result.Summary.HardwareCategory)" -Level "Information"
+            Write-DotWinLog "User Type: $($result.Summary.UserType)" -Level "Information"
+            Write-DotWinLog "Performance Score: $($result.Summary.PerformanceScore)" -Level "Information"
+            Write-DotWinLog "Optimization Potential: $($result.Summary.OptimizationPotential)%" -Level "Information"
+            Write-DotWinLog "Configuration Items Applied: $($result.Summary.ConfigurationItemsApplied)" -Level "Information"
+            Write-DotWinLog "Recommendations Applied: $($result.Summary.RecommendationsApplied)" -Level "Information"
         }
         
         return $result

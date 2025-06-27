@@ -151,8 +151,8 @@ function Test-ProgressSystemCore {
     # Test 4: Progress coordination with logging
     try {
         $progressId = Start-DotWinProgress -Activity "Logging Test" -Status "Testing log coordination"
-        Write-DotWinLog -Message "Test message during progress" -Level Information -ShowWithProgress -ProgressId $progressId
-        Write-DotWinLog -Message "Warning message during progress" -Level Warning -ShowWithProgress -ProgressId $progressId
+        Write-DotWinLog -Message "Test message during progress" -Level "Information" -ShowWithProgress -ProgressId $progressId
+        Write-DotWinLog -Message "Warning message during progress" -Level "Warning" -ShowWithProgress -ProgressId $progressId
         Complete-DotWinProgress -ProgressId $progressId
         Add-TestResult "Progress-Logging Coordination" $true "Progress and logging coordination works correctly"
     } catch {

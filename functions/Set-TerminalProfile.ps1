@@ -6,13 +6,21 @@ function Set-TerminalProfile {
     .DESCRIPTION
         The Set-TerminalProfile function provides comprehensive Windows Terminal
         configuration, including themes, profiles, keybindings, and settings
-        while integrating with the DotWin configuration management system.
+        while integrating with the DotWin Configuration Bridge system for
+        rich declarative configurations and user overrides.
+
+    .PARAMETER Theme
+        Apply a predefined theme from the Configuration Bridge.
+        Supports DotWinDark, DotWinLight, Developer, Gaming, and other themes
+        defined in the terminal configuration.
+
+    .PARAMETER ConfigurationName
+        Use a specific configuration by name from the Configuration Bridge.
+        This allows using complete terminal configurations with themes, profiles,
+        and keybindings predefined.
 
     .PARAMETER ConfigurationPath
         Path to a configuration file containing terminal settings.
-
-    .PARAMETER Theme
-        Apply a predefined theme (Dark, Light, Campbell, Vintage, etc.).
 
     .PARAMETER IncludeProfiles
         Configure shell profiles (PowerShell, Command Prompt, WSL, etc.).
@@ -32,10 +40,19 @@ function Set-TerminalProfile {
     .PARAMETER BackupExisting
         Creates a backup of existing terminal settings before making changes.
 
+    .PARAMETER UserConfigPath
+        Optional path to user configuration directory for overrides.
+        If not specified, will automatically discover user configurations.
+
     .EXAMPLE
-        Set-TerminalProfile -Theme 'Dark' -IncludeProfiles -IncludeKeybindings
+        Set-TerminalProfile -Theme 'DotWinDark' -IncludeProfiles -IncludeKeybindings
         
-        Configures Windows Terminal with dark theme, profiles, and keybindings.
+        Configures Windows Terminal with DotWin dark theme, profiles, and keybindings.
+
+    .EXAMPLE
+        Set-TerminalProfile -ConfigurationName 'Developer'
+
+        Applies the complete Developer configuration including theme, profiles, and keybindings.
 
     .EXAMPLE
         Set-TerminalProfile -ConfigurationPath 'C:\Config\Terminal.json' -BackupExisting
@@ -43,23 +60,28 @@ function Set-TerminalProfile {
         Applies terminal configuration from file with backup of existing settings.
 
     .EXAMPLE
-        Set-TerminalProfile -Theme 'Campbell' -IncludeSettings -WhatIf
+        Set-TerminalProfile -Theme 'Gaming' -IncludeSettings -WhatIf -UserConfigPath '~/.my-dotwin'
         
-        Shows what would happen when applying Campbell theme and settings.
+        Shows what would happen when applying Gaming theme with user overrides.
 
     .OUTPUTS
         DotWinExecutionResult[]
         Returns an array of execution results for each terminal configuration operation.
 
     .NOTES
-        This function requires Windows Terminal to be installed.
-        Some settings may require terminal restart to take effect.
+        This function uses the DotWin Configuration Bridge system for rich configuration
+        management with user override support. Terminal profiles are dynamically resolved
+        based on installed applications and system configuration.
     #>
     [CmdletBinding(SupportsShouldProcess, DefaultParameterSetName = 'Theme')]
     param(
         [Parameter(Mandatory = $true, ParameterSetName = 'Theme', Position = 0)]
-        [ValidateSet('Dark', 'Light', 'Campbell', 'Vintage', 'OneHalfDark', 'OneHalfLight', 'SolarizedDark', 'SolarizedLight')]
+        [ValidateSet('DotWinDark', 'DotWinLight', 'Developer', 'Gaming')]
         [string]$Theme,
+
+        [Parameter(Mandatory = $true, ParameterSetName = 'Configuration', Position = 0)]
+        [ValidateSet('DotWinDark', 'DotWinLight', 'Developer', 'Gaming')]
+        [string]$ConfigurationName,
 
         [Parameter(ParameterSetName = 'ConfigFile')]
         [ValidateScript({
@@ -83,11 +105,14 @@ function Set-TerminalProfile {
         [switch]$Force,
 
         [Parameter()]
-        [switch]$BackupExisting
+        [switch]$BackupExisting,
+
+        [Parameter()]
+        [string]$UserConfigPath
     )
 
     begin {
-        Write-DotWinLog "Starting Windows Terminal configuration" -Level Information
+        Write-DotWinLog "Starting Windows Terminal configuration with Configuration Bridge" -Level "Information"
         
         # Validate environment
         $envTest = Test-DotWinEnvironment
@@ -98,6 +123,33 @@ function Set-TerminalProfile {
         # Check if Windows Terminal is installed
         if (-not (Test-WindowsTerminalInstalled)) {
             throw "Windows Terminal is not installed on this system"
+        }
+
+        # Initialize Configuration Bridge
+        try {
+            # Get module configuration path
+            $moduleConfigPath = Join-Path $PSScriptRoot "..\config"
+            if (-not (Test-Path $moduleConfigPath)) {
+                $moduleConfigPath = Join-Path (Split-Path $PSScriptRoot -Parent) "config"
+            }
+
+            # Discover user configuration path if not provided
+            if (-not $UserConfigPath) {
+                Write-DotWinLog "Discovering user configuration directories" -Level "Information"
+                $userConfigs = Get-DotWinUserConfigurationPath -ErrorAction SilentlyContinue
+                if ($userConfigs -and $userConfigs.Count -gt 0) {
+                    $UserConfigPath = $userConfigs[0].Path  # Use highest priority config
+                    Write-DotWinLog "Found user configuration at: $UserConfigPath" -Level "Information"
+                }
+            }
+
+            # Create Configuration Bridge
+            $configBridge = New-DotWinConfigurationBridge -ModuleConfigPath $moduleConfigPath -UserConfigPath $UserConfigPath
+            Write-DotWinLog "Configuration Bridge initialized successfully" -Level "Information"
+        }
+        catch {
+            Write-DotWinLog "Warning: Could not initialize Configuration Bridge, falling back to basic mode: $($_.Exception.Message)" -Level "Warning"
+            $configBridge = $null
         }
 
         $results = @()
@@ -111,21 +163,56 @@ function Set-TerminalProfile {
 
             switch ($PSCmdlet.ParameterSetName) {
                 'Theme' {
-                    Write-DotWinLog "Loading terminal configuration for theme: $Theme" -Level Information
-                    $terminalConfig = Get-WindowsTerminalConfiguration -Theme $Theme -IncludeProfiles:$IncludeProfiles -IncludeKeybindings:$IncludeKeybindings -IncludeSettings:$IncludeSettings
+                    Write-DotWinLog "Loading terminal configuration for theme: $Theme" -Level "Information"
+
+                    # Use Configuration Bridge if available, otherwise fall back to module configuration
+                    if ($configBridge) {
+                        Write-DotWinLog "Using Configuration Bridge for theme: $Theme" -Level "Information"
+                        $bridgeConfig = $configBridge.ResolveTerminalConfiguration($Theme)
+                        if ($bridgeConfig) {
+                            # Build terminal settings from the resolved configuration
+                            $terminalConfig = Build-TerminalSettings -Configuration $bridgeConfig -IncludeProfiles:$IncludeProfiles -IncludeKeybindings:$IncludeKeybindings -IncludeSettings:$IncludeSettings
+                        } else {
+                            Write-DotWinLog "Configuration Bridge did not return configuration for theme: $Theme, falling back to module config" -Level "Warning"
+                            $terminalConfig = Get-DotWinTerminalConfiguration -Theme $Theme
+                        }
+                    } else {
+                        Write-DotWinLog "Configuration Bridge not available, using module configuration for theme: $Theme" -Level "Information"
+                        $terminalConfig = Get-DotWinTerminalConfiguration -Theme $Theme
+                    }
                 }
                 
+                'Configuration' {
+                    Write-DotWinLog "Loading terminal configuration by name: $ConfigurationName" -Level "Information"
+
+                    # Use Configuration Bridge for named configurations
+                    if ($configBridge) {
+                        Write-DotWinLog "Using Configuration Bridge for configuration: $ConfigurationName" -Level "Information"
+                        $bridgeConfig = $configBridge.ResolveTerminalConfiguration($ConfigurationName)
+                        if ($bridgeConfig) {
+                            $terminalConfig = Build-TerminalSettings -Configuration $bridgeConfig -IncludeProfiles:$IncludeProfiles -IncludeKeybindings:$IncludeKeybindings -IncludeSettings:$IncludeSettings
+                            $Theme = $ConfigurationName  # Use the configuration name as theme for display
+                        } else {
+                            throw "Configuration '$ConfigurationName' not found in Configuration Bridge"
+                        }
+                    } else {
+                        Write-DotWinLog "Configuration Bridge not available, falling back to theme configuration for: $ConfigurationName" -Level "Warning"
+                        $terminalConfig = Get-DotWinTerminalConfiguration -Theme $ConfigurationName
+                        $Theme = $ConfigurationName
+                    }
+                }
+
                 'ConfigFile' {
-                    Write-DotWinLog "Loading terminal configuration from file: $ConfigurationPath" -Level Information
+                    Write-DotWinLog "Loading terminal configuration from file: $ConfigurationPath" -Level "Information"
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $terminalConfig = $configContent
-                    $Theme = if ($terminalConfig.theme) { $terminalConfig.theme } else { 'Dark' }
+                    $Theme = if ($terminalConfig.theme) { $terminalConfig.theme } else { 'Custom' }
                 }
             }
 
             # Get terminal settings path
             $settingsPath = Get-WindowsTerminalSettingsPath
-            Write-DotWinLog "Terminal settings path: $settingsPath" -Level Information
+            Write-DotWinLog "Terminal settings path: $settingsPath" -Level "Information"
 
             # Create terminal configuration item
             $terminalItem = [DotWinWindowsTerminal]::new($Theme)
@@ -139,18 +226,27 @@ function Set-TerminalProfile {
             $result.ItemName = "Windows Terminal ($Theme)"
             $result.ItemType = "WindowsTerminal"
 
+            # Add configuration source information
+            $configSource = if ($configBridge) { "ConfigurationBridge" } else { "ModuleOnly" }
+
             try {
+                # Validate that we have a valid configuration
+                if (-not $terminalConfig) {
+                    throw "No terminal configuration available for theme: $Theme"
+                }
+
                 # Test if terminal needs configuration
                 $needsConfiguration = -not $terminalItem.Test() -or $Force
                 
                 if (-not $needsConfiguration) {
                     $result.Success = $true
                     $result.Message = "Windows Terminal already configured"
-                    Write-DotWinLog "Windows Terminal already configured" -Level Information
+                    $result.ConfigurationSource = $configSource
+                    Write-DotWinLog "Windows Terminal already configured" -Level "Information"
                 } else {
                     # Configure the terminal
                     if ($PSCmdlet.ShouldProcess($Theme, "Configure Windows Terminal")) {
-                        Write-DotWinLog "Configuring Windows Terminal: $Theme" -Level Information
+                        Write-DotWinLog "Configuring Windows Terminal: $Theme using $configSource" -Level "Information"
                         
                         # Get current state for comparison
                         $beforeState = $terminalItem.GetCurrentState()
@@ -167,25 +263,28 @@ function Set-TerminalProfile {
                         
                         $result.Success = $true
                         $result.Message = "Windows Terminal configured successfully"
-                        Write-DotWinLog "Successfully configured Windows Terminal: $Theme" -Level Information
+                        $result.ConfigurationSource = $configSource
+                        Write-DotWinLog "Successfully configured Windows Terminal: $Theme using $configSource" -Level "Information"
                     } else {
                         $result.Success = $true
                         $result.Message = "Windows Terminal configuration skipped (WhatIf)"
-                        Write-DotWinLog "Windows Terminal configuration skipped: $Theme (WhatIf)" -Level Information
+                        $result.ConfigurationSource = $configSource
+                        Write-DotWinLog "Windows Terminal configuration skipped: $Theme (WhatIf)" -Level "Information"
                     }
                 }
                 
             } catch {
                 $result.Success = $false
                 $result.Message = "Error configuring Windows Terminal: $($_.Exception.Message)"
-                Write-DotWinLog "Error configuring Windows Terminal '$Theme': $($_.Exception.Message)" -Level Error
+                $result.ConfigurationSource = $configSource
+                Write-DotWinLog "Error configuring Windows Terminal '$Theme': $($_.Exception.Message)" -Level "Error"
             } finally {
                 $result.Duration = (Get-Date) - $terminalStartTime
                 $results += $result
             }
 
         } catch {
-            Write-DotWinLog "Critical error during Windows Terminal configuration: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during Windows Terminal configuration: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -195,10 +294,10 @@ function Set-TerminalProfile {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
         
-        Write-DotWinLog "Windows Terminal configuration completed" -Level Information
-        Write-DotWinLog "Total configurations processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Windows Terminal configuration completed" -Level "Information"
+        Write-DotWinLog "Total configurations processed: $($results.Count)" -Level "Information"
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information"
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         return $results
     }
@@ -229,7 +328,7 @@ function Test-WindowsTerminalInstalled {
         return $false
         
     } catch {
-        Write-DotWinLog "Error checking Windows Terminal installation: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error checking Windows Terminal installation: $($_.Exception.Message)" -Level "Error"
         return $false
     }
 }
@@ -258,373 +357,11 @@ function Get-WindowsTerminalSettingsPath {
     return $terminalPath
 }
 
-function Get-WindowsTerminalConfiguration {
-    <#
-    .SYNOPSIS
-        Gets default Windows Terminal configuration for a theme.
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Theme,
-        
-        [Parameter()]
-        [switch]$IncludeProfiles,
-        
-        [Parameter()]
-        [switch]$IncludeKeybindings,
-        
-        [Parameter()]
-        [switch]$IncludeSettings
-    )
-    
-    $config = @{
-        '$schema' = "https://aka.ms/terminal-profiles-schema"
-        theme = $Theme
-        defaultProfile = "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}"  # PowerShell
-    }
-    
-    if ($IncludeSettings) {
-        $config.copyOnSelect = $true
-        $config.copyFormatting = $false
-        $config.wordDelimiters = " ./\\()`"'-:,.;<>~!@#$%^&*|+=[]{}~?`u{2502}"
-        $config.confirmCloseAllTabs = $true
-        $config.startOnUserLogin = $false
-        $config.launchMode = "default"
-        $config.initialCols = 120
-        $config.initialRows = 30
-    }
-    
-    if ($IncludeProfiles) {
-        $config.profiles = @{
-            defaults = @{
-                fontFace = "Cascadia Code"
-                fontSize = 12
-                cursorShape = "bar"
-                colorScheme = $Theme
-            }
-            list = @(
-                @{
-                    guid = "{61c54bbd-c2c6-5271-96e7-009a87ff44bf}"
-                    name = "PowerShell"
-                    commandline = "powershell.exe"
-                    icon = "ms-appx:///ProfileIcons/{61c54bbd-c2c6-5271-96e7-009a87ff44bf}.png"
-                    colorScheme = $Theme
-                },
-                @{
-                    guid = "{0caa0dad-35be-5f56-a8ff-afceeeaa6101}"
-                    name = "Command Prompt"
-                    commandline = "cmd.exe"
-                    icon = "ms-appx:///ProfileIcons/{0caa0dad-35be-5f56-a8ff-afceeeaa6101}.png"
-                    colorScheme = $Theme
-                }
-            )
-        }
-        
-        # Add PowerShell 7 if available
-        $pwsh7Path = Get-Command "pwsh.exe" -ErrorAction SilentlyContinue
-        if ($pwsh7Path) {
-            $config.profiles.list += @{
-                guid = "{574e775e-4f2a-5b96-ac1e-a2962a402336}"
-                name = "PowerShell 7"
-                commandline = "pwsh.exe"
-                icon = "ms-appx:///ProfileIcons/{574e775e-4f2a-5b96-ac1e-a2962a402336}.png"
-                colorScheme = $Theme
-            }
-        }
-    }
-    
-    if ($IncludeKeybindings) {
-        $config.actions = @(
-            @{ command = "copy"; keys = "ctrl+c" },
-            @{ command = "paste"; keys = "ctrl+v" },
-            @{ command = "find"; keys = "ctrl+f" },
-            @{ command = "newTab"; keys = "ctrl+t" },
-            @{ command = "closeTab"; keys = "ctrl+w" },
-            @{ command = "nextTab"; keys = "ctrl+tab" },
-            @{ command = "prevTab"; keys = "ctrl+shift+tab" },
-            @{ command = @{ action = "splitPane"; split = "horizontal" }; keys = "alt+shift+minus" },
-            @{ command = @{ action = "splitPane"; split = "vertical" }; keys = "alt+shift+plus" }
-        )
-    }
-    
-    # Add color schemes
-    $config.schemes = Get-WindowsTerminalColorSchemes -Theme $Theme
-    
-    return $config
-}
-
-function Get-WindowsTerminalColorSchemes {
-    <#
-    .SYNOPSIS
-        Gets color schemes for Windows Terminal themes.
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Theme
-    )
-    
-    $schemes = @()
-    
-    switch ($Theme) {
-        'Dark' {
-            $schemes += @{
-                name = "Dark"
-                black = "#0C0C0C"
-                red = "#C50F1F"
-                green = "#13A10E"
-                yellow = "#C19C00"
-                blue = "#0037DA"
-                purple = "#881798"
-                cyan = "#3A96DD"
-                white = "#CCCCCC"
-                brightBlack = "#767676"
-                brightRed = "#E74856"
-                brightGreen = "#16C60C"
-                brightYellow = "#F9F1A5"
-                brightBlue = "#3B78FF"
-                brightPurple = "#B4009E"
-                brightCyan = "#61D6D6"
-                brightWhite = "#F2F2F2"
-                background = "#0C0C0C"
-                foreground = "#CCCCCC"
-                cursorColor = "#FFFFFF"
-                selectionBackground = "#FFFFFF"
-            }
-        }
-        
-        'Light' {
-            $schemes += @{
-                name = "Light"
-                black = "#0C0C0C"
-                red = "#C50F1F"
-                green = "#13A10E"
-                yellow = "#C19C00"
-                blue = "#0037DA"
-                purple = "#881798"
-                cyan = "#3A96DD"
-                white = "#CCCCCC"
-                brightBlack = "#767676"
-                brightRed = "#E74856"
-                brightGreen = "#16C60C"
-                brightYellow = "#F9F1A5"
-                brightBlue = "#3B78FF"
-                brightPurple = "#B4009E"
-                brightCyan = "#61D6D6"
-                brightWhite = "#F2F2F2"
-                background = "#FFFFFF"
-                foreground = "#0C0C0C"
-                cursorColor = "#0C0C0C"
-                selectionBackground = "#0C0C0C"
-            }
-        }
-        
-        'Campbell' {
-            $schemes += @{
-                name = "Campbell"
-                black = "#0C0C0C"
-                red = "#C50F1F"
-                green = "#13A10E"
-                yellow = "#C19C00"
-                blue = "#0037DA"
-                purple = "#881798"
-                cyan = "#3A96DD"
-                white = "#CCCCCC"
-                brightBlack = "#767676"
-                brightRed = "#E74856"
-                brightGreen = "#16C60C"
-                brightYellow = "#F9F1A5"
-                brightBlue = "#3B78FF"
-                brightPurple = "#B4009E"
-                brightCyan = "#61D6D6"
-                brightWhite = "#F2F2F2"
-                background = "#0C0C0C"
-                foreground = "#F2F2F2"
-                cursorColor = "#FFFFFF"
-                selectionBackground = "#FFFFFF"
-            }
-        }
-        
-        'OneHalfDark' {
-            $schemes += @{
-                name = "OneHalfDark"
-                black = "#282C34"
-                red = "#E06C75"
-                green = "#98C379"
-                yellow = "#E5C07B"
-                blue = "#61AFEF"
-                purple = "#C678DD"
-                cyan = "#56B6C2"
-                white = "#DCDFE4"
-                brightBlack = "#5A6374"
-                brightRed = "#E06C75"
-                brightGreen = "#98C379"
-                brightYellow = "#E5C07B"
-                brightBlue = "#61AFEF"
-                brightPurple = "#C678DD"
-                brightCyan = "#56B6C2"
-                brightWhite = "#DCDFE4"
-                background = "#282C34"
-                foreground = "#DCDFE4"
-                cursorColor = "#FFFFFF"
-                selectionBackground = "#FFFFFF"
-            }
-        }
-        
-        'SolarizedDark' {
-            $schemes += @{
-                name = "SolarizedDark"
-                black = "#002B36"
-                red = "#DC322F"
-                green = "#859900"
-                yellow = "#B58900"
-                blue = "#268BD2"
-                purple = "#D33682"
-                cyan = "#2AA198"
-                white = "#EEE8D5"
-                brightBlack = "#073642"
-                brightRed = "#CB4B16"
-                brightGreen = "#586E75"
-                brightYellow = "#657B83"
-                brightBlue = "#839496"
-                brightPurple = "#6C71C4"
-                brightCyan = "#93A1A1"
-                brightWhite = "#FDF6E3"
-                background = "#002B36"
-                foreground = "#839496"
-                cursorColor = "#FFFFFF"
-                selectionBackground = "#FFFFFF"
-            }
-        }
-        
-        default {
-            # Default to Campbell theme
-            $schemes += @{
-                name = $Theme
-                black = "#0C0C0C"
-                red = "#C50F1F"
-                green = "#13A10E"
-                yellow = "#C19C00"
-                blue = "#0037DA"
-                purple = "#881798"
-                cyan = "#3A96DD"
-                white = "#CCCCCC"
-                brightBlack = "#767676"
-                brightRed = "#E74856"
-                brightGreen = "#16C60C"
-                brightYellow = "#F9F1A5"
-                brightBlue = "#3B78FF"
-                brightPurple = "#B4009E"
-                brightCyan = "#61D6D6"
-                brightWhite = "#F2F2F2"
-                background = "#0C0C0C"
-                foreground = "#F2F2F2"
-                cursorColor = "#FFFFFF"
-                selectionBackground = "#FFFFFF"
-            }
-        }
-    }
-    
-    return $schemes
-}
-
-function Merge-WindowsTerminalConfiguration {
-    <#
-    .SYNOPSIS
-        Merges new configuration with existing Windows Terminal settings.
-    #>
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [hashtable]$ExistingSettings,
-        
-        [Parameter(Mandatory = $true)]
-        [hashtable]$NewConfiguration
-    )
-    
-    # Start with existing settings
-    $mergedSettings = $ExistingSettings.Clone()
-    
-    # Apply new configuration
-    foreach ($key in $NewConfiguration.Keys) {
-        if ($key -eq 'profiles' -and $mergedSettings.ContainsKey('profiles')) {
-            # Merge profiles carefully
-            if (-not $mergedSettings.profiles) {
-                $mergedSettings.profiles = @{}
-            }
-            
-            # Merge defaults
-            if ($NewConfiguration.profiles.defaults) {
-                if (-not $mergedSettings.profiles.defaults) {
-                    $mergedSettings.profiles.defaults = @{}
-                }
-                foreach ($defaultKey in $NewConfiguration.profiles.defaults.Keys) {
-                    $mergedSettings.profiles.defaults[$defaultKey] = $NewConfiguration.profiles.defaults[$defaultKey]
-                }
-            }
-            
-            # Merge profile list
-            if ($NewConfiguration.profiles.list) {
-                if (-not $mergedSettings.profiles.list) {
-                    $mergedSettings.profiles.list = @()
-                }
-                
-                foreach ($newProfile in $NewConfiguration.profiles.list) {
-                    $existingProfile = $mergedSettings.profiles.list | Where-Object { $_.guid -eq $newProfile.guid }
-                    if ($existingProfile) {
-                        # Update existing profile
-                        foreach ($profileKey in $newProfile.Keys) {
-                            $existingProfile[$profileKey] = $newProfile[$profileKey]
-                        }
-                    } else {
-                        # Add new profile
-                        $mergedSettings.profiles.list += $newProfile
-                    }
-                }
-            }
-        } elseif ($key -eq 'schemes' -and $mergedSettings.ContainsKey('schemes')) {
-            # Merge color schemes
-            if (-not $mergedSettings.schemes) {
-                $mergedSettings.schemes = @()
-            }
-            
-            foreach ($newScheme in $NewConfiguration.schemes) {
-                $existingScheme = $mergedSettings.schemes | Where-Object { $_.name -eq $newScheme.name }
-                if ($existingScheme) {
-                    # Update existing scheme
-                    foreach ($schemeKey in $newScheme.Keys) {
-                        $existingScheme[$schemeKey] = $newScheme[$schemeKey]
-                    }
-                } else {
-                    # Add new scheme
-                    $mergedSettings.schemes += $newScheme
-                }
-            }
-        } elseif ($key -eq 'actions' -and $mergedSettings.ContainsKey('actions')) {
-            # Merge actions/keybindings
-            if (-not $mergedSettings.actions) {
-                $mergedSettings.actions = @()
-            }
-            
-            foreach ($newAction in $NewConfiguration.actions) {
-                $existingAction = $mergedSettings.actions | Where-Object { $_.keys -eq $newAction.keys }
-                if ($existingAction) {
-                    # Update existing action
-                    $existingAction.command = $newAction.command
-                } else {
-                    # Add new action
-                    $mergedSettings.actions += $newAction
-                }
-            }
-        } else {
-            # Direct assignment for other keys
-            $mergedSettings[$key] = $NewConfiguration[$key]
-        }
-    }
-    
-    return $mergedSettings
-}
+# Removed hardcoded configuration functions - now using Configuration Bridge system
+# The following functions have been replaced by the Configuration Bridge:
+# - Get-WindowsTerminalConfiguration: Replaced by configBridge.ResolveTerminalConfiguration()
+# - Get-WindowsTerminalColorSchemes: Handled by terminal configuration in config/Terminal.ps1
+# - Merge-WindowsTerminalConfiguration: Handled by Configuration Bridge merging logic
 
 function Get-WindowsTerminalStatus {
     <#
@@ -641,7 +378,7 @@ function Get-WindowsTerminalStatus {
     param()
     
     try {
-        Write-DotWinLog "Retrieving Windows Terminal status" -Level Information
+        Write-DotWinLog "Retrieving Windows Terminal status" -Level "Information"
         
         $status = @{
             IsInstalled = Test-WindowsTerminalInstalled
@@ -671,11 +408,11 @@ function Get-WindowsTerminalStatus {
             }
         }
         
-        Write-DotWinLog "Retrieved Windows Terminal status successfully" -Level Information
+        Write-DotWinLog "Retrieved Windows Terminal status successfully" -Level "Information"
         return $status
         
     } catch {
-        Write-DotWinLog "Error retrieving Windows Terminal status: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error retrieving Windows Terminal status: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }

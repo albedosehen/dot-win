@@ -1,484 +1,692 @@
 # DotWin Sequence Diagrams
 
-## Overview
+This document provides detailed sequence diagrams showing the flow of operations within DotWin's configuration management system. These diagrams illustrate how different components interact during various scenarios.
 
-This document contains detailed sequence diagrams that illustrate the key workflows and interactions within the DotWin system. These diagrams show how different components collaborate to provide intelligent Windows configuration management.
+## Core Configuration Flow
 
-## 1. System Profiling Workflow
+### Main Configuration Application
 
-The system profiling workflow demonstrates how DotWin analyzes the current system state to build a comprehensive profile.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant DotWin as DotWin Module
-    participant SP as System Profiler
-    participant HP as Hardware Profiler
-    participant SWP as Software Profiler
-    participant UP as User Profiler
-    participant SM as System Metrics
-    participant Cache as Profile Cache
-    
-    User->>DotWin: Get-DotWinSystemProfile
-    DotWin->>SP: Initialize System Profiler
-    
-    Note over SP: Check for cached profile
-    SP->>Cache: Check cache validity
-    Cache-->>SP: Cache status
-    
-    alt Cache Valid
-        Cache-->>SP: Return cached profile
-        SP-->>DotWin: Cached profile
-    else Cache Invalid/Missing
-        SP->>HP: Profile Hardware
-        HP->>HP: Detect CPU, GPU, Memory, Storage
-        HP->>HP: Run performance benchmarks
-        HP-->>SP: Hardware profile
-        
-        SP->>SWP: Profile Software
-        SWP->>SWP: Scan package managers
-        SWP->>SWP: Detect development environments
-        SWP->>SWP: Inventory applications
-        SWP-->>SP: Software profile
-        
-        SP->>UP: Profile User
-        UP->>UP: Analyze user behavior
-        UP->>UP: Detect user type
-        UP->>UP: Assess technical level
-        UP-->>SP: User profile
-        
-        SP->>SM: Calculate System Metrics
-        SM->>SM: Performance scoring
-        SM->>SM: Security assessment
-        SM->>SM: Optimization potential
-        SM-->>SP: System metrics
-        
-        SP->>Cache: Store profile
-        SP-->>DotWin: Complete profile
-    end
-    
-    DotWin-->>User: System Profile Object
-```
-
-### Key Steps in System Profiling
-
-1. **Cache Check**: First check if a valid cached profile exists
-2. **Hardware Profiling**: Detect and analyze hardware components
-3. **Software Profiling**: Inventory installed software and development environments
-4. **User Profiling**: Analyze user behavior and determine user type
-5. **Metrics Calculation**: Calculate performance scores and optimization potential
-6. **Caching**: Store the complete profile for future use
-
-## 2. Recommendation Engine Workflow
-
-This sequence shows how the recommendation engine generates intelligent suggestions based on the system profile.
+This diagram shows the complete flow when applying a configuration using [`Invoke-DotWinConfiguration`](../functions/Invoke-DotWinConfiguration.ps1):
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant DotWin as DotWin Module
-    participant RE as Recommendation Engine
-    participant Cache as Profile Cache
-    participant RBE as Rule-Based Engine
-    participant CD as Conflict Detector
-    participant PS as Priority Scorer
-    participant Profile as System Profile
-    
-    User->>DotWin: Get-DotWinRecommendations
-    DotWin->>RE: Initialize Recommendation Engine
-    
-    Note over RE: Check for cached profile and recommendations
-    RE->>Cache: Check cached system profile
-    Cache-->>RE: Profile cache status
-    
-    alt Profile Cache Valid
-        Cache-->>RE: Return cached profile
-        RE->>Cache: Check cached recommendations for profile
-        Cache-->>RE: Recommendation cache status
+    participant IDC as Invoke-DotWinConfiguration
+    participant DCP as DotWinConfigurationParser
+    participant PM as PluginManager
+    participant Plugin
+    participant System
+    participant Progress as ProgressManager
 
-        alt Recommendations Cache Valid
-            Cache-->>RE: Return cached recommendations
-            RE-->>DotWin: Cached recommendations
-        else Recommendations Cache Invalid/Missing
-            RE->>Profile: Use cached profile data
-            Note over RE: Generate new recommendations with cached profile
+    User->>IDC: Invoke-DotWinConfiguration -ConfigurationPath config.json
+    IDC->>Progress: Initialize progress tracking
+    Progress-->>IDC: Progress context created
+    
+    IDC->>DCP: Parse configuration file
+    DCP->>DCP: Validate JSON schema
+    DCP->>DCP: Convert to DotWinConfiguration objects
+    DCP-->>IDC: Parsed configuration
+    
+    IDC->>PM: Get applicable plugins
+    PM->>PM: Query plugin registry
+    PM-->>IDC: List of plugins
+    
+    loop For each configuration section
+        IDC->>Plugin: CanHandleConfiguration(section)
+        Plugin-->>IDC: true/false
+        
+        alt Plugin can handle section
+            IDC->>Progress: Update progress
+            IDC->>Plugin: TestConfiguration(config)
+            Plugin->>System: Check current state
+            System-->>Plugin: Current configuration
+            Plugin-->>IDC: Test result
+
+            alt Test passes
+                IDC->>Plugin: ApplyConfiguration(config)
+                Plugin->>System: Apply changes
+                System-->>Plugin: Success/failure
+                Plugin-->>IDC: Application result
+                IDC->>Progress: Update progress
+            else Test fails
+                IDC->>Progress: Log error
+                IDC-->>User: Configuration test failed
+            end
         end
-    else Profile Cache Invalid/Missing
-        RE->>DotWin: Request fresh system profile
-        DotWin->>Profile: Get-DotWinSystemProfile
-        Profile-->>DotWin: Fresh system profile
-        DotWin-->>RE: Fresh profile data
-        RE->>Cache: Store fresh profile
     end
     
-    alt Need to Generate Recommendations
-        RE->>Profile: Get hardware info
-        RE->>Profile: Get software patterns
-        RE->>Profile: Get user behavior
-
-        RE->>RBE: Generate rule-based recommendations
-
-        Note over RBE: Hardware Rules
-        RBE->>RBE: Check Intel/AMD CPU rules
-        RBE->>RBE: Check NVIDIA/AMD GPU rules
-        RBE->>RBE: Check memory optimization rules
-
-        Note over RBE: Software Pattern Rules
-        RBE->>RBE: Check developer patterns
-        RBE->>RBE: Check gaming patterns
-        RBE->>RBE: Check business patterns
-
-        Note over RBE: User Behavior Rules
-        RBE->>RBE: Check user type rules
-        RBE->>RBE: Check technical level rules
-
-        RBE-->>RE: Rule-based recommendations
-
-        RE->>CD: Detect conflicts
-        CD->>CD: Check package conflicts
-        CD->>CD: Check configuration conflicts
-        CD->>CD: Check dependency conflicts
-        CD-->>RE: Conflict resolution
-
-        RE->>PS: Score and prioritize
-        PS->>PS: Calculate confidence scores
-        PS->>PS: Assign priority levels
-        PS->>PS: Generate rationale
-        PS-->>RE: Scored recommendations
-
-        RE->>Cache: Store generated recommendations
-        RE-->>DotWin: Final recommendation list
-    end
-    
-    DotWin-->>User: Prioritized recommendations
+    IDC->>Progress: Complete progress
+    IDC-->>User: Configuration applied successfully
 ```
 
-### Recommendation Generation Process
+### Rich Configuration Integration
 
-1. **Cache Check**: First check for cached system profile and existing recommendations
-2. **Profile Retrieval**: Use cached profile or request fresh system profiling if cache is invalid
-3. **Recommendation Cache**: Check if valid recommendations exist for the current profile
-4. **Rule Processing**: Apply hardware, software, and user-specific rules (if generating new recommendations)
-5. **Conflict Detection**: Identify and resolve conflicting recommendations
-6. **Scoring and Prioritization**: Calculate confidence scores and assign priorities
-7. **Cache Storage**: Store generated recommendations for future use
-8. **Final Output**: Return prioritized list of recommendations (cached or freshly generated)
-
-## 3. Configuration Application Workflow
-
-This sequence demonstrates the safe application of configurations with validation and rollback capabilities.
+This diagram shows how rich configuration files integrate with the core system:
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant DotWin as DotWin Module
-    participant CV as Configuration Validator
-    participant Backup as Backup System
-    participant CA as Configuration Applier
+    participant IPF as Install-Packages Function
+    participant RCF as Rich Config Files
     participant PM as Package Manager
-    participant RM as Registry Manager
-    participant SM as Service Manager
-    participant Logger as Logging System
+    participant System
+
+    User->>IPF: Install-Packages -Category "Development"
+    IPF->>RCF: Load config/Packages.ps1
+    RCF->>RCF: Execute Get-DevelopmentPackages()
+    RCF-->>IPF: Package list with metadata
     
-    User->>DotWin: Invoke-DotWinProfiledConfiguration
-    DotWin->>CV: Validate configuration
+    loop For each package
+        IPF->>PM: Check if package installed
+        PM->>System: Query installed packages
+        System-->>PM: Installation status
+        PM-->>IPF: Package status
+
+        alt Package not installed
+            IPF->>PM: Install package
+            PM->>System: Download and install
+            System-->>PM: Installation result
+            PM-->>IPF: Success/failure
+        end
+    end
     
-    CV->>CV: Check system compatibility
-    CV->>CV: Validate dependencies
-    CV->>CV: Check for conflicts
-    CV->>CV: Estimate impact
-    CV-->>DotWin: Validation results
+    IPF-->>User: Installation complete
+```
+
+## System Profiling Flow
+
+### Complete System Profile Generation
+
+This diagram shows the flow for [`Get-DotWinSystemProfile`](../functions/Get-DotWinSystemProfile.ps1):
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant GSP as Get-DotWinSystemProfile
+    participant HP as HardwareProfiler
+    participant SP as SoftwareProfiler
+    participant UP as UserProfiler
+    participant WMI as WMI/CIM
+    participant Registry
+    participant FileSystem
+
+    User->>GSP: Get-DotWinSystemProfile
+    GSP->>GSP: Initialize profiling context
+
+    par Hardware Profiling
+        GSP->>HP: Profile hardware
+        HP->>WMI: Get-CimInstance Win32_ComputerSystem
+        WMI-->>HP: System information
+        HP->>WMI: Get-CimInstance Win32_Processor
+        WMI-->>HP: CPU information
+        HP->>WMI: Get-CimInstance Win32_PhysicalMemory
+        WMI-->>HP: Memory information
+        HP->>WMI: Get-CimInstance Win32_VideoController
+        WMI-->>HP: Graphics information
+        HP-->>GSP: Hardware profile
+    and Software Profiling
+        GSP->>SP: Profile software
+        SP->>Registry: Query installed programs
+        Registry-->>SP: Program list
+        SP->>FileSystem: Check application paths
+        FileSystem-->>SP: Installation status
+        SP->>WMI: Get-CimInstance Win32_Product
+        WMI-->>SP: Installed products
+        SP-->>GSP: Software profile
+    and User Profiling
+        GSP->>UP: Profile user preferences
+        UP->>Registry: Query user settings
+        Registry-->>UP: User preferences
+        UP->>FileSystem: Check user directories
+        FileSystem-->>UP: User data
+        UP-->>GSP: User profile
+    end
+
+    GSP->>GSP: Combine profiles
+    GSP->>GSP: Calculate derived metrics
+    GSP-->>User: Complete system profile
+```
+
+### Recommendation Generation
+
+This diagram shows how recommendations are generated based on system profiles:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant GDR as Get-DotWinRecommendations
+    participant RE as RecommendationEngine
+    participant ML as MLModel
+    participant RB as RuleBasedEngine
+    participant CF as CollaborativeFiltering
+    participant CB as ContentBasedFiltering
+    participant Profile as SystemProfile
+
+    User->>GDR: Get-DotWinRecommendations
+    GDR->>Profile: Get current system profile
+    Profile-->>GDR: System profile data
+
+    GDR->>RE: Generate recommendations
+
+    par Rule-Based Recommendations
+        RE->>RB: Generate rule-based recommendations
+        RB->>RB: Apply business rules
+        RB->>Profile: Check system characteristics
+        Profile-->>RB: System data
+        RB-->>RE: Rule-based recommendations
+    and ML-Based Recommendations
+        RE->>ML: Generate ML recommendations
+        ML->>ML: Extract features from profile
+        ML->>ML: Apply trained model
+        ML-->>RE: ML recommendations
+    and Collaborative Filtering
+        RE->>CF: Generate collaborative recommendations
+        CF->>CF: Find similar users
+        CF->>CF: Analyze their configurations
+        CF-->>RE: Collaborative recommendations
+    and Content-Based Filtering
+        RE->>CB: Generate content-based recommendations
+        CB->>CB: Analyze current configuration
+        CB->>CB: Find similar configurations
+        CB-->>RE: Content-based recommendations
+    end
     
-    alt Validation Failed
-        DotWin-->>User: Validation errors
-    else Validation Passed
-        DotWin->>Backup: Create system backup
-        Backup->>Backup: Backup registry
-        Backup->>Backup: Backup configurations
-        Backup-->>DotWin: Backup complete
+    RE->>RE: Combine and rank recommendations
+    RE->>RE: Apply confidence scoring
+    RE-->>GDR: Final recommendations
+    GDR-->>User: Ranked recommendation list
+```
+
+## Package Management Flow
+
+### Package Installation Process
+
+This diagram shows the complete package installation flow:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant IP as Install-Packages
+    participant PM as PackageManager
+    participant Winget
+    participant Chocolatey
+    participant Scoop
+    participant Progress as ProgressManager
+
+    User->>IP: Install-Packages -PackageList @("Git.Git", "VSCode")
+    IP->>Progress: Initialize progress tracking
+    IP->>PM: Get available package managers
+    
+    PM->>Winget: Test availability
+    Winget-->>PM: Available
+    PM->>Chocolatey: Test availability
+    Chocolatey-->>PM: Available
+    PM->>Scoop: Test availability
+    Scoop-->>PM: Not available
+    PM-->>IP: Available managers: Winget, Chocolatey
+    
+    loop For each package
+        IP->>Progress: Update progress
+        IP->>PM: Check if package installed
         
-        DotWin->>CA: Apply configuration
-        
-        loop For each configuration item
-            CA->>Logger: Log configuration start
-            
-            alt Package Installation
-                CA->>PM: Install package
-                PM->>PM: Download and install
-                PM-->>CA: Installation result
-            else Registry Modification
-                CA->>RM: Modify registry
-                RM->>RM: Update registry keys
-                RM-->>CA: Registry result
-            else Service Configuration
-                CA->>SM: Configure service
-                SM->>SM: Start/stop/configure service
-                SM-->>CA: Service result
-            end
-            
-            CA->>Logger: Log configuration result
-            
-            alt Configuration Failed
-                CA->>Backup: Initiate rollback
-                Backup->>Backup: Restore from backup
-                Backup-->>CA: Rollback complete
-                CA-->>DotWin: Configuration failed
-            end
+        par Check Winget
+            PM->>Winget: winget list Git.Git
+            Winget-->>PM: Not installed
+        and Check Chocolatey
+            PM->>Chocolatey: choco list git
+            Chocolatey-->>PM: Not installed
         end
         
-        CA-->>DotWin: Configuration complete
-        DotWin-->>User: Success with summary
+        PM-->>IP: Package not installed
+
+        IP->>PM: Install package via preferred manager
+        PM->>Winget: winget install Git.Git
+        Winget->>Winget: Download package
+        Winget->>Winget: Install package
+        Winget-->>PM: Installation successful
+        PM-->>IP: Package installed
+
+        IP->>Progress: Update progress
     end
+
+    IP->>Progress: Complete progress
+    IP-->>User: All packages installed successfully
 ```
 
-### Configuration Application Safety
+### Package Source Management
 
-1. **Pre-flight Validation**: Comprehensive validation before any changes
-2. **System Backup**: Create restore points before applying changes
-3. **Incremental Application**: Apply configurations one at a time with logging
-4. **Error Recovery**: Automatic rollback on critical failures
-5. **Success Reporting**: Detailed summary of applied changes
-
-## 4. Plugin Architecture Workflow
-
-This sequence shows how the plugin system manages the complete lifecycle of plugins.
-
-```mermaid
-sequenceDiagram
-    participant Developer
-    participant PluginMgr as Plugin Manager
-    participant Plugin as Custom Plugin
-    participant Registry as Plugin Registry
-    participant Validator as Plugin Validator
-    participant DotWin as DotWin Core
-    
-    Developer->>PluginMgr: Register-DotWinPlugin
-    PluginMgr->>Validator: Validate plugin
-    Validator->>Validator: Check plugin structure
-    Validator->>Validator: Validate dependencies
-    Validator->>Validator: Security scan
-    Validator-->>PluginMgr: Validation result
-    
-    alt Validation Failed
-        PluginMgr-->>Developer: Validation errors
-    else Validation Passed
-        PluginMgr->>Registry: Register plugin
-        Registry->>Registry: Store plugin metadata
-        Registry->>Registry: Update plugin catalog
-        Registry-->>PluginMgr: Registration complete
-        PluginMgr-->>Developer: Plugin registered
-    end
-    
-    Note over PluginMgr: Plugin Usage
-    DotWin->>PluginMgr: Get available plugins
-    PluginMgr->>Registry: Query plugins
-    Registry-->>PluginMgr: Plugin list
-    PluginMgr-->>DotWin: Available plugins
-    
-    DotWin->>PluginMgr: Enable-DotWinPlugin
-    PluginMgr->>Plugin: Load plugin
-    Plugin->>Plugin: Initialize
-    Plugin-->>PluginMgr: Plugin ready
-    PluginMgr-->>DotWin: Plugin enabled
-    
-    DotWin->>Plugin: Execute plugin function
-    Plugin->>Plugin: Process request
-    Plugin-->>DotWin: Plugin result
-```
-
-### Plugin Lifecycle Management
-
-1. **Registration**: Validate and register new plugins
-2. **Discovery**: Query available plugins from registry
-3. **Loading**: Load and initialize plugins on demand
-4. **Execution**: Execute plugin functionality
-5. **Management**: Enable, disable, and unregister plugins
-
-## 5. System Health Monitoring Workflow
-
-This sequence demonstrates how the system continuously monitors health and detects issues.
+This diagram shows how package sources are managed:
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant DotWin as DotWin Module
-    participant HM as Health Monitor
-    participant PM as Performance Monitor
-    participant SM as Security Monitor
-    participant CM as Configuration Monitor
-    participant Alert as Alert System
-    participant Logger as Logging System
-    
-    User->>DotWin: Get-DotWinSystemHealth
-    DotWin->>HM: Initialize health monitoring
-    
-    HM->>PM: Check performance metrics
-    PM->>PM: Measure CPU usage
-    PM->>PM: Measure memory usage
-    PM->>PM: Measure disk I/O
-    PM->>PM: Measure network performance
-    PM-->>HM: Performance data
-    
-    HM->>SM: Check security status
-    SM->>SM: Validate Windows Defender
-    SM->>SM: Check firewall status
-    SM->>SM: Scan for vulnerabilities
-    SM-->>HM: Security assessment
-    
-    HM->>CM: Check configuration drift
-    CM->>CM: Compare current vs baseline
-    CM->>CM: Detect unauthorized changes
-    CM->>CM: Validate configuration integrity
-    CM-->>HM: Configuration status
-    
-    HM->>HM: Calculate health scores
-    HM->>HM: Identify issues and trends
-    
-    alt Critical Issues Found
-        HM->>Alert: Generate alerts
-        Alert->>Alert: Send notifications
-        Alert-->>HM: Alert sent
-    end
-    
-    HM->>Logger: Log health assessment
-    HM-->>DotWin: Health report
-    DotWin-->>User: System health status
+    participant PSM as PackageSourceManager
+    participant Winget
+    participant Chocolatey
+    participant Custom as CustomSource
+
+    User->>PSM: Add-DotWinPackageSource -Name "Custom" -Url "https://custom.repo"
+    PSM->>PSM: Validate source URL
+    PSM->>Custom: Test connectivity
+    Custom-->>PSM: Connection successful
+    PSM->>PSM: Register source
+    PSM-->>User: Source added successfully
+
+    User->>PSM: Get-DotWinPackageSources
+    PSM->>Winget: Get configured sources
+    Winget-->>PSM: Winget sources
+    PSM->>Chocolatey: Get configured sources
+    Chocolatey-->>PSM: Chocolatey sources
+    PSM->>PSM: Get custom sources
+    PSM-->>User: All configured sources
+
+    User->>PSM: Install-Package -Source "Custom" -PackageId "MyPackage"
+    PSM->>Custom: Search for package
+    Custom-->>PSM: Package found
+    PSM->>Custom: Download package
+    Custom-->>PSM: Package downloaded
+    PSM->>PSM: Install package
+    PSM-->>User: Package installed from custom source
 ```
 
-### Health Monitoring Components
+## Terminal Configuration Flow
 
-1. **Performance Monitoring**: CPU, memory, disk, and network metrics
-2. **Security Assessment**: Defender status, firewall, vulnerability scanning
-3. **Configuration Drift**: Compare current state to baseline configuration
-4. **Health Scoring**: Calculate overall system health scores
-5. **Alerting**: Generate notifications for critical issues
+### Terminal Profile Application
 
-## 6. Backup and Rollback Workflow
-
-This sequence shows how the system protects against configuration failures through backup and rollback.
+This diagram shows how terminal profiles are applied:
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant DotWin as DotWin Module
-    participant BM as Backup Manager
-    participant RM as Registry Manager
-    participant FM as File Manager
-    participant SM as Service Manager
-    participant Validator as Validator
+    participant STP as Set-TerminalProfile
+    participant TC as TerminalConfig
+    participant WT as WindowsTerminal
+    participant FS as FileSystem
+
+    User->>STP: Set-TerminalProfile -Theme "SolarizedDark"
+    STP->>TC: Load config/Terminal.ps1
+    TC->>TC: Execute Get-SolarizedDarkTheme()
+    TC-->>STP: Theme configuration
     
-    User->>DotWin: Request configuration change
-    DotWin->>BM: Create backup before changes
+    STP->>WT: Get current settings path
+    WT-->>STP: Settings file location
     
-    BM->>RM: Backup registry keys
-    RM->>RM: Export registry sections
-    RM-->>BM: Registry backup complete
+    STP->>FS: Read current settings.json
+    FS-->>STP: Current configuration
     
-    BM->>FM: Backup configuration files
-    FM->>FM: Copy configuration files
-    FM-->>BM: File backup complete
+    STP->>STP: Backup current configuration
+    STP->>STP: Merge theme with current settings
+    STP->>STP: Validate merged configuration
     
-    BM->>SM: Backup service configurations
-    SM->>SM: Export service settings
-    SM-->>BM: Service backup complete
-    
-    BM-->>DotWin: Backup complete
-    
-    Note over DotWin: Apply configuration changes
-    DotWin->>DotWin: Execute configuration
-    
-    alt Configuration Failed
-        DotWin->>BM: Initiate rollback
-        
-        BM->>RM: Restore registry
-        RM->>RM: Import registry backup
-        RM-->>BM: Registry restored
-        
-        BM->>FM: Restore files
-        FM->>FM: Restore configuration files
-        FM-->>BM: Files restored
-        
-        BM->>SM: Restore services
-        SM->>SM: Restore service settings
-        SM-->>BM: Services restored
-        
-        BM->>Validator: Validate rollback
-        Validator->>Validator: Check system state
-        Validator-->>BM: Rollback validated
-        
-        BM-->>DotWin: Rollback complete
-        DotWin-->>User: Configuration failed, system restored
-    else Configuration Succeeded
-        DotWin->>BM: Mark backup as successful
-        BM-->>DotWin: Backup marked
-        DotWin-->>User: Configuration applied successfully
+    alt Validation successful
+        STP->>FS: Write new settings.json
+        FS-->>STP: File written successfully
+        STP->>WT: Notify configuration change
+        WT->>WT: Reload configuration
+        WT-->>STP: Configuration applied
+        STP-->>User: Terminal profile applied successfully
+    else Validation failed
+        STP->>STP: Restore backup
+        STP-->>User: Configuration validation failed
     end
 ```
 
-### Backup and Recovery Process
+### Theme Customization Flow
 
-1. **Pre-Change Backup**: Create comprehensive backup before any changes
-2. **Registry Backup**: Export relevant registry sections
-3. **File Backup**: Copy configuration files and settings
-4. **Service Backup**: Export service configurations
-5. **Automatic Rollback**: Restore system state on critical failures
-6. **Validation**: Verify system integrity after rollback
-
-## 7. Parallel Processing Workflow (PowerShell 7+)
-
-This sequence demonstrates how DotWin leverages PowerShell 7+ parallel processing capabilities.
+This diagram shows how custom themes are created and applied:
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant DotWin as DotWin Module
-    participant Scheduler as Task Scheduler
+    participant CTT as Create-TerminalTheme
+    participant TB as ThemeBuilder
+    participant TC as TerminalConfig
+    participant FS as FileSystem
+
+    User->>CTT: Create-TerminalTheme -Name "MyTheme" -BaseTheme "SolarizedDark"
+    CTT->>TC: Get base theme configuration
+    TC->>TC: Execute Get-SolarizedDarkTheme()
+    TC-->>CTT: Base theme data
+    
+    CTT->>TB: Initialize theme builder
+    TB->>TB: Load base theme
+    TB->>TB: Apply customizations
+    TB->>TB: Validate theme structure
+    TB-->>CTT: Custom theme configuration
+    
+    CTT->>FS: Save theme to config/Terminal.ps1
+    FS-->>CTT: Theme saved
+    
+    CTT->>TC: Register new theme function
+    TC->>TC: Add Get-MyTheme() function
+    TC-->>CTT: Theme function registered
+    
+    CTT-->>User: Custom theme created successfully
+    
+    User->>STP: Set-TerminalProfile -Theme "MyTheme"
+    Note over STP: Follow standard terminal profile application flow
+```
+
+## Plugin System Flow
+
+### Plugin Loading and Registration
+
+This diagram shows how plugins are loaded and registered:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant PM as PluginManager
+    participant PL as PluginLoader
+    participant PR as PluginRegistry
+    participant Plugin
+    participant FS as FileSystem
+
+    User->>PM: Load-DotWinPlugin -Path "MyPlugin"
+    PM->>FS: Check plugin directory
+    FS-->>PM: Directory exists
+    
+    PM->>PL: Load plugin manifest
+    PL->>FS: Read MyPlugin.psd1
+    FS-->>PL: Manifest data
+    PL->>PL: Validate manifest structure
+    PL->>PL: Check compatibility
+    PL-->>PM: Manifest validated
+    
+    PM->>PL: Import plugin module
+    PL->>FS: Import MyPlugin.psm1
+    FS-->>PL: Module imported
+    PL->>Plugin: Initialize plugin
+    Plugin->>Plugin: Run initialization logic
+    Plugin-->>PL: Initialization complete
+    PL-->>PM: Plugin loaded
+    
+    PM->>PR: Register plugin
+    PR->>PR: Add to plugin registry
+    PR->>PR: Index by type and category
+    PR-->>PM: Plugin registered
+    
+    PM-->>User: Plugin loaded successfully
+```
+
+### Plugin Configuration Application
+
+This diagram shows how plugins apply configurations:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant IDC as Invoke-DotWinConfiguration
+    participant PM as PluginManager
+    participant Plugin
+    participant App as TargetApplication
+    participant FS as FileSystem
+
+    User->>IDC: Apply configuration with plugin section
+    IDC->>PM: Get plugins for configuration section
+    PM->>PM: Query plugin registry
+    PM-->>IDC: Applicable plugins
+    
+    IDC->>Plugin: CanHandleConfiguration(section)
+    Plugin->>Plugin: Check section compatibility
+    Plugin-->>IDC: true
+    
+    IDC->>Plugin: TestConfiguration(config)
+    Plugin->>App: Get current application state
+    App-->>Plugin: Current configuration
+    Plugin->>Plugin: Compare with desired state
+    Plugin-->>IDC: Test result
+    
+    alt Test passes
+        IDC->>Plugin: ApplyConfiguration(config)
+        Plugin->>FS: Backup current configuration
+        FS-->>Plugin: Backup created
+        
+        Plugin->>App: Apply new configuration
+        App->>App: Update settings
+        App-->>Plugin: Configuration applied
+        
+        Plugin->>App: Restart if needed
+        App->>App: Restart application
+        App-->>Plugin: Application restarted
+        
+        Plugin-->>IDC: Configuration applied successfully
+    else Test fails
+        IDC-->>User: Configuration test failed
+    end
+```
+
+## Error Handling and Recovery
+
+### Configuration Rollback Flow
+
+This diagram shows how configuration rollbacks are handled:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant IDC as Invoke-DotWinConfiguration
+    participant Plugin
+    participant Backup as BackupManager
+    participant FS as FileSystem
+    participant App as TargetApplication
+
+    User->>IDC: Apply configuration
+    IDC->>Plugin: ApplyConfiguration(config)
+    Plugin->>Backup: Create backup
+    Backup->>FS: Save current configuration
+    FS-->>Backup: Backup saved
+    Backup-->>Plugin: Backup reference
+
+    Plugin->>App: Apply new configuration
+    App-->>Plugin: Error: Invalid configuration
+
+    Plugin->>Plugin: Detect application error
+    Plugin->>Backup: Restore from backup
+    Backup->>FS: Read backup file
+    FS-->>Backup: Backup data
+    Backup->>App: Restore previous configuration
+    App-->>Backup: Configuration restored
+    Backup-->>Plugin: Rollback complete
+
+    Plugin-->>IDC: Configuration failed, rolled back
+    IDC-->>User: Configuration application failed, system restored
+```
+
+### Progress Tracking and Cancellation
+
+This diagram shows how progress is tracked and operations can be cancelled:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Operation
+    participant Progress as ProgressManager
+    participant UI as ProgressUI
+    participant CTS as CancellationTokenSource
+
+    User->>Operation: Start long-running operation
+    Operation->>Progress: Initialize progress context
+    Progress->>CTS: Create cancellation token
+    Progress->>UI: Show progress dialog
+
+    loop Operation steps
+        Operation->>Progress: Update progress
+        Progress->>UI: Update progress bar
+        UI->>UI: Check for user cancellation
+
+        alt User cancels
+            UI->>CTS: Request cancellation
+            CTS->>Operation: Cancellation requested
+            Operation->>Operation: Clean up partial work
+            Operation->>Progress: Operation cancelled
+            Progress->>UI: Hide progress dialog
+            Operation-->>User: Operation cancelled
+        else Continue operation
+            Operation->>Operation: Continue with next step
+        end
+    end
+
+    alt Operation completes
+        Operation->>Progress: Operation complete
+        Progress->>UI: Hide progress dialog
+        Operation-->>User: Operation completed successfully
+    end
+```
+
+## Performance Optimization Flow
+
+### Parallel Package Installation
+
+This diagram shows how packages are installed in parallel for better performance:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant IP as Install-Packages
+    participant Scheduler as TaskScheduler
     participant Worker1 as Worker Thread 1
     participant Worker2 as Worker Thread 2
     participant Worker3 as Worker Thread 3
-    participant Aggregator as Result Aggregator
+    participant PM as PackageManager
+
+    User->>IP: Install-Packages -PackageList @("Git", "VSCode", "Docker") -Parallel
+    IP->>Scheduler: Create parallel execution plan
+    Scheduler->>Scheduler: Analyze dependencies
+    Scheduler->>Scheduler: Create execution batches
     
-    User->>DotWin: Get-DotWinSystemProfile -UseParallel
-    DotWin->>Scheduler: Initialize parallel processing
+    par Batch 1 (Independent packages)
+        Scheduler->>Worker1: Install Git
+        Worker1->>PM: Install Git.Git
+        PM-->>Worker1: Git installed
+        Worker1-->>Scheduler: Task complete
+    and
+        Scheduler->>Worker2: Install VSCode
+        Worker2->>PM: Install Microsoft.VisualStudioCode
+        PM-->>Worker2: VSCode installed
+        Worker2-->>Scheduler: Task complete
+    end
     
-    Scheduler->>Worker1: Profile hardware
-    Scheduler->>Worker2: Profile software
-    Scheduler->>Worker3: Profile user behavior
+    Scheduler->>Scheduler: Wait for batch 1 completion
     
-    Note over Worker1,Worker3: Parallel execution
+    par Batch 2 (Dependent packages)
+        Scheduler->>Worker3: Install Docker
+        Worker3->>PM: Install Docker.DockerDesktop
+        PM-->>Worker3: Docker installed
+        Worker3-->>Scheduler: Task complete
+    end
     
-    Worker1->>Worker1: Detect CPU, GPU, Memory
-    Worker2->>Worker2: Scan packages, applications
-    Worker3->>Worker3: Analyze user patterns
-    
-    Worker1-->>Aggregator: Hardware profile
-    Worker2-->>Aggregator: Software profile
-    Worker3-->>Aggregator: User profile
-    
-    Aggregator->>Aggregator: Combine profiles
-    Aggregator->>Aggregator: Calculate metrics
-    Aggregator-->>DotWin: Complete system profile
-    
-    DotWin-->>User: System profile (faster execution)
+    Scheduler-->>IP: All packages installed
+    IP-->>User: Parallel installation complete
 ```
 
-### Parallel Processing Benefits
+### Caching and Optimization
 
-1. **Concurrent Execution**: Multiple profiling tasks run simultaneously
-2. **Improved Performance**: Significant reduction in total execution time
-3. **Resource Optimization**: Better utilization of multi-core systems
-4. **Graceful Fallback**: Automatic fallback to sequential processing on PowerShell 5.1
-5. **Result Aggregation**: Combine parallel results into cohesive output
+This diagram shows how caching improves performance:
 
-## Summary
+```mermaid
+sequenceDiagram
+    participant User
+    participant GSP as Get-DotWinSystemProfile
+    participant Cache as CacheManager
+    participant HP as HardwareProfiler
+    participant SP as SoftwareProfiler
+    participant Storage as CacheStorage
 
-These sequence diagrams illustrate the sophisticated workflows that make DotWin a professional-grade configuration management system:
+    User->>GSP: Get-DotWinSystemProfile
+    GSP->>Cache: Check cache for system profile
+    Cache->>Storage: Query cached profile
+    Storage-->>Cache: Cache miss
+    Cache-->>GSP: No cached profile
+    
+    GSP->>HP: Profile hardware
+    HP-->>GSP: Hardware profile
+    GSP->>SP: Profile software
+    SP-->>GSP: Software profile
+    
+    GSP->>GSP: Combine profiles
+    GSP->>Cache: Store profile in cache
+    Cache->>Storage: Save profile with TTL
+    Storage-->>Cache: Profile cached
+    
+    GSP-->>User: System profile
 
-- **Intelligent Profiling**: Comprehensive system analysis with caching
-- **Smart Recommendations**: Rule-based engine with conflict resolution
-- **Safe Configuration**: Validation, backup, and rollback mechanisms
-- **Extensible Architecture**: Plugin system with complete lifecycle management
-- **Proactive Monitoring**: Continuous health assessment and alerting
-- **Performance Optimization**: Parallel processing for improved speed
+    Note over User: Second call within cache TTL
 
-Each workflow is designed with safety, reliability, and user experience in mind, providing enterprise-grade capabilities while maintaining ease of use.
+    User->>GSP: Get-DotWinSystemProfile
+    GSP->>Cache: Check cache for system profile
+    Cache->>Storage: Query cached profile
+    Storage-->>Cache: Cache hit
+    Cache-->>GSP: Cached profile
+    GSP-->>User: System profile (from cache)
+```
+
+## Integration Patterns
+
+### External Tool Integration
+
+This diagram shows how DotWin integrates with external tools:
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant DotWin
+    participant Git
+    participant Docker
+    participant VSCode
+    participant PowerShell
+
+    User->>DotWin: Apply development environment configuration
+
+    DotWin->>Git: Configure Git settings
+    Git->>Git: Set user.name and user.email
+    Git-->>DotWin: Git configured
+
+    DotWin->>Docker: Configure Docker settings
+    Docker->>Docker: Set resource limits
+    Docker->>Docker: Configure registries
+    Docker-->>DotWin: Docker configured
+
+    DotWin->>VSCode: Apply VSCode configuration
+    VSCode->>VSCode: Install extensions
+    VSCode->>VSCode: Apply settings
+    VSCode-->>DotWin: VSCode configured
+
+    DotWin->>PowerShell: Configure PowerShell profile
+    PowerShell->>PowerShell: Set aliases and functions
+    PowerShell->>PowerShell: Import modules
+    PowerShell-->>DotWin: PowerShell configured
+
+    DotWin-->>User: Development environment ready
+```
+
+### Configuration Synchronization
+
+This diagram shows how configurations are synchronized across systems:
+
+```mermaid
+sequenceDiagram
+    participant System1
+    participant DotWin1 as DotWin (System 1)
+    participant Cloud as Cloud Storage
+    participant DotWin2 as DotWin (System 2)
+    participant System2
+
+    System1->>DotWin1: Export-DotWinConfiguration
+    DotWin1->>DotWin1: Collect current configurations
+    DotWin1->>DotWin1: Create configuration package
+    DotWin1->>Cloud: Upload configuration
+    Cloud-->>DotWin1: Upload complete
+    DotWin1-->>System1: Configuration exported
+
+    System2->>DotWin2: Import-DotWinConfiguration -Source Cloud
+    DotWin2->>Cloud: Download configuration
+    Cloud-->>DotWin2: Configuration downloaded
+    DotWin2->>DotWin2: Validate configuration
+    DotWin2->>DotWin2: Apply configuration
+    DotWin2-->>System2: Configuration imported and applied
+```
+
+---
+
+These sequence diagrams provide a comprehensive view of how DotWin's components interact during various operations. They serve as a reference for understanding the system's behavior and can be helpful for debugging, optimization, and further development.

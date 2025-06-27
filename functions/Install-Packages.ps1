@@ -137,17 +137,17 @@ function Install-Packages {
             switch ($PSCmdlet.ParameterSetName) {
                 'PackageList' {
                     $packagesToInstall = $PackageList
-                    Write-DotWinLog "Processing $($PackageList.Count) packages from list" -Level Information -ShowWithProgress
+                    Write-DotWinLog "Processing $($PackageList.Count) packages from list" -Level "Information" -ShowWithProgress
                 }
                 
                 'Category' {
-                    Write-DotWinLog "Loading packages from category: $Category" -Level Information -ShowWithProgress
+                    Write-DotWinLog "Loading packages from category: $Category" -Level "Information" -ShowWithProgress
                     $packagesConfigPath = Join-Path $script:DotWinConfigPath "Packages.ps1"
                     
                     if (Test-Path $packagesConfigPath) {
                         . $packagesConfigPath
                         $packagesToInstall = Get-PackagesByCategory -Category $Category
-                        Write-DotWinLog "Found $($packagesToInstall.Count) packages in category '$Category'" -Level Information -ShowWithProgress
+                        Write-DotWinLog "Found $($packagesToInstall.Count) packages in category '$Category'" -Level "Information" -ShowWithProgress
                     } else {
                         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "Packages configuration file not found: $packagesConfigPath"
                         throw "Packages configuration file not found: $packagesConfigPath"
@@ -155,14 +155,14 @@ function Install-Packages {
                 }
                 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading packages from configuration file: $ConfigurationPath" -Level Information -ShowWithProgress
+                    Write-DotWinLog "Loading packages from configuration file: $ConfigurationPath" -Level "Information" -ShowWithProgress
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $packagesToInstall = $configContent.packages
                 }
             }
 
             if ($packagesToInstall.Count -eq 0) {
-                Write-DotWinLog "No packages to install" -Level Warning -ShowWithProgress
+                Write-DotWinLog "No packages to install" -Level "Warning" -ShowWithProgress
                 Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed (no packages)" -Message "No packages to install"
                 return $results
             }
@@ -171,7 +171,7 @@ function Install-Packages {
 
             # Process packages with progress tracking
             if ($Parallel -and $packagesToInstall.Count -gt 1) {
-                Write-DotWinLog "Installing packages in parallel" -Level Information -ShowWithProgress
+                Write-DotWinLog "Installing packages in parallel" -Level "Information" -ShowWithProgress
                 $results = Install-PackagesParallel -Packages $packagesToInstall -Source $Source -Force:$Force -AcceptLicenses:$AcceptLicenses -MasterProgressId $masterProgressId
             } else {
                 $results = Install-PackagesSequential -Packages $packagesToInstall -Source $Source -Force:$Force -AcceptLicenses:$AcceptLicenses -MasterProgressId $masterProgressId
@@ -213,12 +213,12 @@ function Install-Packages {
         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
 
         # Show summary with progress coordination
-        Write-DotWinLog "Package installation completed" -Level Information -ShowWithProgress
-        Write-DotWinLog "Total packages processed: $($results.Count)" -Level Information -ShowWithProgress
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information -ShowWithProgress
-        Write-DotWinLog "Actually installed: $actuallyInstalled, Already installed: $alreadyInstalled" -Level Information -ShowWithProgress
-        Write-DotWinLog "Throughput: $packagesPerSecond packages/second" -Level Information -ShowWithProgress
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information -ShowWithProgress
+        Write-DotWinLog "Package installation completed" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Total packages processed: $($results.Count)" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Actually installed: $actuallyInstalled, Already installed: $alreadyInstalled" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Throughput: $packagesPerSecond packages/second" -Level "Information" -ShowWithProgress
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information" -ShowWithProgress
         
         # Ensure we always return an array, even for single items
         if ($results -is [array]) {
@@ -389,7 +389,7 @@ function Install-PackagesParallel {
         [int]$MasterProgressId
     )
     
-    Write-DotWinLog "Parallel installation is experimental and may not work with all packages" -Level Warning -ShowWithProgress
+    Write-DotWinLog "Parallel installation is experimental and may not work with all packages" -Level "Warning" -ShowWithProgress
     
     # Create nested progress for parallel operations
     $parallelProgressId = Start-DotWinProgress -Activity "Parallel Package Installation" -Status "Starting parallel jobs..." -ParentId $MasterProgressId
@@ -450,7 +450,7 @@ function Install-PackagesParallel {
                 StartTime = Get-Date
             }
             
-            Write-DotWinLog "Started installation job for package: $($packageConfig.PackageId)" -Level Verbose -ShowWithProgress
+            Write-DotWinLog "Started installation job for package: $($packageConfig.PackageId)" -Level "Verbose" -ShowWithProgress
         }
         
         Write-DotWinProgress -ProgressId $parallelProgressId -Status "Waiting for $($jobs.Count) parallel jobs to complete..." -PercentComplete 30
@@ -477,11 +477,11 @@ function Install-PackagesParallel {
             if ($jobResult.Success) {
                 $result.Success = $true
                 $result.Message = "Package installed successfully (parallel)"
-                Write-DotWinLog "Successfully installed package: $packageId" -Level Information -ShowWithProgress
+                Write-DotWinLog "Successfully installed package: $packageId" -Level "Information" -ShowWithProgress
             } else {
                 $result.Success = $false
                 $result.Message = "Error installing package: $($jobResult.Error)"
-                Write-DotWinLog "Error installing package '$packageId': $($jobResult.Error)" -Level Error -ShowWithProgress
+                Write-DotWinLog "Error installing package '$packageId': $($jobResult.Error)" -Level "Error" -ShowWithProgress
             }
             
             $results += $result

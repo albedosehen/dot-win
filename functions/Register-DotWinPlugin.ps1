@@ -75,7 +75,7 @@ function Register-DotWinPlugin {
     )
 
     begin {
-        Write-DotWinLog "Starting plugin registration" -Level Information
+        Write-DotWinLog "Starting plugin registration" -Level "Information"
 
         # Initialize plugin manager if not already done
         if (-not $script:DotWinPluginManager) {
@@ -99,7 +99,7 @@ function Register-DotWinPlugin {
     process {
         try {
             if ($PSCmdlet.ParameterSetName -eq 'Path') {
-                Write-DotWinLog "Loading plugin from path: $PluginPath" -Level Information
+                Write-DotWinLog "Loading plugin from path: $PluginPath" -Level "Information"
                 
                 # Load plugin from file
                 $Plugin = Import-DotWinPlugin -Path $PluginPath -Category $Category
@@ -111,7 +111,7 @@ function Register-DotWinPlugin {
 
             # Validate plugin
             if (-not $Force) {
-                Write-DotWinLog "Validating plugin: $($Plugin.Name)" -Level Information
+                Write-DotWinLog "Validating plugin: $($Plugin.Name)" -Level "Information"
                 
                 if (-not $script:DotWinPluginManager.ValidatePlugin($Plugin)) {
                     throw "Plugin validation failed for '$($Plugin.Name)'"
@@ -123,18 +123,18 @@ function Register-DotWinPlugin {
             }
 
             # Register plugin
-            Write-DotWinLog "Registering plugin: $($Plugin.Name) v$($Plugin.Version)" -Level Information
+            Write-DotWinLog "Registering plugin: $($Plugin.Name) v$($Plugin.Version)" -Level "Information"
             $script:DotWinPluginManager.RegisterPlugin($Plugin)
 
             # Load plugin if auto-load is enabled
             if ($script:DotWinPluginManager.AutoLoadEnabled) {
-                Write-DotWinLog "Auto-loading plugin: $($Plugin.Name)" -Level Information
+                Write-DotWinLog "Auto-loading plugin: $($Plugin.Name)" -Level "Information"
                 $loadResult = $script:DotWinPluginManager.LoadPlugin($Plugin.Name)
                 
                 if ($loadResult) {
-                    Write-DotWinLog "Plugin '$($Plugin.Name)' loaded successfully" -Level Information
+                    Write-DotWinLog "Plugin '$($Plugin.Name)' loaded successfully" -Level "Information"
                 } else {
-                    Write-DotWinLog "Failed to auto-load plugin '$($Plugin.Name)'" -Level Warning
+                    Write-DotWinLog "Failed to auto-load plugin '$($Plugin.Name)'" -Level "Warning"
                 }
             }
 
@@ -143,13 +143,13 @@ function Register-DotWinPlugin {
             }
 
         } catch {
-            Write-DotWinLog "Error registering plugin: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error registering plugin: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
-        Write-DotWinLog "Plugin registration completed" -Level Information
+        Write-DotWinLog "Plugin registration completed" -Level "Information"
     }
 }
 

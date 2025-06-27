@@ -48,7 +48,7 @@ function Unregister-DotWinPlugin {
     )
 
     begin {
-        Write-DotWinLog "Starting plugin unregistration for: $Name" -Level Information
+        Write-DotWinLog "Starting plugin unregistration for: $Name" -Level "Information"
 
         if (-not $script:DotWinPluginManager) {
             throw "Plugin manager is not initialized"
@@ -65,7 +65,7 @@ function Unregister-DotWinPlugin {
             if ($PSCmdlet.ShouldProcess($Name, "Unregister Plugin")) {
                 # Check if plugin is loaded and unload it first
                 if ($script:DotWinPluginManager.LoadedPlugins.ContainsKey($Name)) {
-                    Write-DotWinLog "Unloading plugin before unregistration: $Name" -Level Information
+                    Write-DotWinLog "Unloading plugin before unregistration: $Name" -Level "Information"
                     $unloadResult = $script:DotWinPluginManager.UnloadPlugin($Name)
                     
                     if (-not $unloadResult -and -not $Force) {
@@ -90,16 +90,16 @@ function Unregister-DotWinPlugin {
 
                 # Remove from registry
                 $script:DotWinPluginManager.PluginRegistry.Remove($Name)
-                Write-DotWinLog "Plugin '$Name' unregistered successfully" -Level Information
+                Write-DotWinLog "Plugin '$Name' unregistered successfully" -Level "Information"
             }
 
         } catch {
-            Write-DotWinLog "Error unregistering plugin '$Name': $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error unregistering plugin '$Name': $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
-        Write-DotWinLog "Plugin unregistration completed for: $Name" -Level Information
+        Write-DotWinLog "Plugin unregistration completed for: $Name" -Level "Information"
     }
 }

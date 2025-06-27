@@ -274,7 +274,7 @@ function Install-SystemTools {
         )
         
         try {
-            Write-DotWinLog "Installing $($Tool.Name) via Winget..." -Level Verbose
+            Write-DotWinLog "Installing $($Tool.Name) via Winget..." -Level "Verbose"
             
             if ($PSCmdlet.ShouldProcess($Tool.Name, "Install via Winget")) {
                 $arguments = @('install', '--id', $Tool.WingetId, '--silent', '--accept-package-agreements', '--accept-source-agreements')
@@ -328,7 +328,7 @@ function Install-SystemTools {
         )
         
         try {
-            Write-DotWinLog "Installing $($Tool.Name) via Chocolatey..." -Level Verbose
+            Write-DotWinLog "Installing $($Tool.Name) via Chocolatey..." -Level "Verbose"
             
             # Check if Chocolatey is installed
             $chocoCommand = Get-Command 'choco' -ErrorAction SilentlyContinue
@@ -407,7 +407,7 @@ process {
                     }
                 }
                 if (-not $found) {
-                    Write-DotWinLog "Tool '$toolName' not found in catalog" -Level Warning -ShowWithProgress
+                    Write-DotWinLog "Tool '$toolName' not found in catalog" -Level "Warning" -ShowWithProgress
                 }
             }
         } else {
@@ -472,7 +472,7 @@ process {
                     if ($tool.WingetId) {
                         $installResult = Install-ToolViaWinget -Tool $tool
                     } else {
-                        Write-DotWinLog "$($tool.Name) does not have a Winget package ID" -Level Warning -ShowWithProgress
+                        Write-DotWinLog "$($tool.Name) does not have a Winget package ID" -Level "Warning" -ShowWithProgress
                         Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (no Winget ID)" -Message "$($tool.Name) does not have a Winget package ID"
                         continue
                     }
@@ -482,7 +482,7 @@ process {
                     if ($tool.ChocolateyId) {
                         $installResult = Install-ToolViaChocolatey -Tool $tool
                     } else {
-                        Write-DotWinLog "$($tool.Name) does not have a Chocolatey package ID" -Level Warning -ShowWithProgress
+                        Write-DotWinLog "$($tool.Name) does not have a Chocolatey package ID" -Level "Warning" -ShowWithProgress
                         Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (no Chocolatey ID)" -Message "$($tool.Name) does not have a Chocolatey package ID"
                         continue
                     }
@@ -495,14 +495,14 @@ process {
                     } elseif ($tool.ChocolateyId) {
                         $installResult = Install-ToolViaChocolatey -Tool $tool
                     } else {
-                        Write-DotWinLog "$($tool.Name) does not have package manager support" -Level Warning -ShowWithProgress
+                        Write-DotWinLog "$($tool.Name) does not have package manager support" -Level "Warning" -ShowWithProgress
                         Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (no package manager)" -Message "$($tool.Name) does not have package manager support"
                         continue
                     }
                 }
                 
                 'Manual' {
-                    Write-DotWinLog "Manual installation not implemented for $($tool.Name)" -Level Warning -ShowWithProgress
+                    Write-DotWinLog "Manual installation not implemented for $($tool.Name)" -Level "Warning" -ShowWithProgress
                     Complete-DotWinProgress -ProgressId $toolProgressId -Status "Skipped (manual not implemented)" -Message "Manual installation not implemented for $($tool.Name)"
                     continue
                 }
@@ -578,7 +578,7 @@ process {
         Write-DotWinProgress -ProgressId $masterProgressId -Status "Finalizing installation..." -PercentComplete 95
         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Completed" -FinalMetrics $summaryMetrics -Message $summaryMessage
 
-        Write-DotWinLog "System tools installation completed: $successCount successful, $failureCount failed" -Level Information -ShowWithProgress
+        Write-DotWinLog "System tools installation completed: $successCount successful, $failureCount failed" -Level "Information" -ShowWithProgress
 
         return $installResults
     }
@@ -592,7 +592,7 @@ process {
         $errorResult.Duration = (Get-Date) - $startTime
         
         Complete-DotWinProgress -ProgressId $masterProgressId -Status "Failed" -Message "System tools installation failed: $($_.Exception.Message)"
-        Write-DotWinLog $_.Exception.Message -Level Error -ShowWithProgress
+        Write-DotWinLog $_.Exception.Message -Level "Error" -ShowWithProgress
         return $errorResult
     }
 }

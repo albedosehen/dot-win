@@ -99,7 +99,7 @@ function Get-DotWinRecommendations {
     )
 
     begin {
-        Write-DotWinLog "Starting intelligent recommendation generation" -Level Information
+        Write-DotWinLog "Starting intelligent recommendation generation" -Level "Information"
         $startTime = Get-Date
 
         # Validate environment
@@ -113,22 +113,22 @@ function Get-DotWinRecommendations {
         try {
             # Handle pipeline input - check if we received a DotWinSystemStatus object
             if ($InputObject -and $InputObject.GetType().Name -eq 'DotWinSystemStatus') {
-                Write-DotWinLog "Received DotWinSystemStatus from pipeline, extracting SystemProfile..." -Level Information
+                Write-DotWinLog "Received DotWinSystemStatus from pipeline, extracting SystemProfile..." -Level "Information"
                 # Extract SystemProfile from the status object if available
                 if ($InputObject.ConfigurationStatus -and $InputObject.ConfigurationStatus.SystemProfile) {
                     $SystemProfile = $InputObject.ConfigurationStatus.SystemProfile
                 } else {
-                    Write-DotWinLog "No SystemProfile found in status object, generating new profile..." -Level Information
+                    Write-DotWinLog "No SystemProfile found in status object, generating new profile..." -Level "Information"
                     $SystemProfile = Get-DotWinSystemProfile -UseParallel:($PSVersionTable.PSVersion.Major -ge 7)
                 }
             } elseif ($InputObject -and $InputObject.GetType().Name -eq 'DotWinSystemProfiler') {
-                Write-DotWinLog "Received DotWinSystemProfiler from pipeline" -Level Information
+                Write-DotWinLog "Received DotWinSystemProfiler from pipeline" -Level "Information"
                 $SystemProfile = $InputObject
             }
 
             # Generate or use provided system profile
             if (-not $SystemProfile) {
-                Write-DotWinLog "No system profile provided, generating new profile..." -Level Information
+                Write-DotWinLog "No system profile provided, generating new profile..." -Level "Information"
                 $SystemProfile = Get-DotWinSystemProfile -UseParallel:($PSVersionTable.PSVersion.Major -ge 7)
             }
 
@@ -137,11 +137,11 @@ function Get-DotWinRecommendations {
                 throw "Invalid or incomplete system profile provided"
             }
 
-            Write-DotWinLog "Using system profile from: $($SystemProfile.LastProfiled)" -Level Information
-            Write-DotWinLog "Profile version: $($SystemProfile.ProfileVersion)" -Level Information
+            Write-DotWinLog "Using system profile from: $($SystemProfile.LastProfiled)" -Level "Information"
+            Write-DotWinLog "Profile version: $($SystemProfile.ProfileVersion)" -Level "Information"
 
             # Initialize recommendation engine
-            Write-DotWinLog "Initializing recommendation engine..." -Level Information
+            Write-DotWinLog "Initializing recommendation engine..." -Level "Information"
             try {
                 $recommendationEngine = [DotWinRecommendationEngine]::new($SystemProfile)
             } catch {
@@ -150,22 +150,22 @@ function Get-DotWinRecommendations {
             }
 
             # Generate recommendations
-            Write-DotWinLog "Generating intelligent recommendations..." -Level Information
+            Write-DotWinLog "Generating intelligent recommendations..." -Level "Information"
             $allRecommendations = $recommendationEngine.GenerateRecommendations()
 
-            Write-DotWinLog "Generated $($allRecommendations.Count) initial recommendations" -Level Information
+            Write-DotWinLog "Generated $($allRecommendations.Count) initial recommendations" -Level "Information"
 
             # Apply filters
             $filteredRecommendations = $allRecommendations
 
             if ($Category) {
                 $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Category -in $Category }
-                Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level "Information"
             }
 
             if ($Priority) {
                 $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Priority -in $Priority }
-                Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level "Information"
             }
 
             # Remove conflicts unless explicitly requested
@@ -174,14 +174,14 @@ function Get-DotWinRecommendations {
                 $filteredRecommendations = $recommendationEngine.ResolveConflicts($filteredRecommendations)
                 $conflictsRemoved = $originalCount - $filteredRecommendations.Count
                 if ($conflictsRemoved -gt 0) {
-                    Write-DotWinLog "Resolved $conflictsRemoved conflicting recommendations" -Level Information
+                    Write-DotWinLog "Resolved $conflictsRemoved conflicting recommendations" -Level "Information"
                 }
             }
 
             # Limit results
             if ($filteredRecommendations.Count -gt $MaxRecommendations) {
                 $filteredRecommendations = $filteredRecommendations | Select-Object -First $MaxRecommendations
-                Write-DotWinLog "Limited results to top $MaxRecommendations recommendations" -Level Information
+                Write-DotWinLog "Limited results to top $MaxRecommendations recommendations" -Level "Information"
             }
 
             # Add recommendation metadata
@@ -196,7 +196,7 @@ function Get-DotWinRecommendations {
 
             # Export recommendations if requested
             if ($ExportPath) {
-                Write-DotWinLog "Exporting recommendations to: $ExportPath" -Level Information
+                Write-DotWinLog "Exporting recommendations to: $ExportPath" -Level "Information"
                 try {
                     $exportData = @{
                         GeneratedAt = Get-Date
@@ -220,15 +220,15 @@ function Get-DotWinRecommendations {
                     
                     $jsonRecommendations = $exportData | ConvertTo-Json -Depth 10
                     Set-Content -Path $ExportPath -Value $jsonRecommendations -Encoding UTF8
-                    Write-DotWinLog "Recommendations exported successfully" -Level Information
+                    Write-DotWinLog "Recommendations exported successfully" -Level "Information"
                 } catch {
-                    Write-DotWinLog "Failed to export recommendations: $($_.Exception.Message)" -Level Error
+                    Write-DotWinLog "Failed to export recommendations: $($_.Exception.Message)" -Level "Error"
                 }
             }
 
             # Apply recommendations if requested
             if ($ApplyRecommendations) {
-                Write-DotWinLog "Applying high-priority, low-risk recommendations..." -Level Information
+                Write-DotWinLog "Applying high-priority, low-risk recommendations..." -Level "Information"
                 
                 # Filter for auto-applicable recommendations
                 $autoApplicable = $filteredRecommendations | Where-Object { 
@@ -238,27 +238,27 @@ function Get-DotWinRecommendations {
                     -not ($_.Prerequisites -and $_.Prerequisites.Count -gt 0)
                 }
 
-                Write-DotWinLog "Found $($autoApplicable.Count) auto-applicable recommendations" -Level Information
+                Write-DotWinLog "Found $($autoApplicable.Count) auto-applicable recommendations" -Level "Information"
 
                 $applicationResults = @()
                 foreach ($rec in $autoApplicable) {
                     if ($PSCmdlet.ShouldProcess($rec.Title, "Apply Recommendation")) {
-                        Write-DotWinLog "Applying recommendation: $($rec.Title)" -Level Information
+                        Write-DotWinLog "Applying recommendation: $($rec.Title)" -Level "Information"
                         
                         try {
                             $result = $recommendationEngine.ApplyRecommendation($rec)
                             $applicationResults += $result
                             
                             if ($result.Success) {
-                                Write-DotWinLog "Successfully applied: $($rec.Title)" -Level Information
+                                Write-DotWinLog "Successfully applied: $($rec.Title)" -Level "Information"
                             } else {
-                                Write-DotWinLog "Failed to apply: $($rec.Title) - $($result.Message)" -Level Warning
+                                Write-DotWinLog "Failed to apply: $($rec.Title) - $($result.Message)" -Level "Warning"
                             }
                         } catch {
-                            Write-DotWinLog "Error applying recommendation '$($rec.Title)': $($_.Exception.Message)" -Level Error
+                            Write-DotWinLog "Error applying recommendation '$($rec.Title)': $($_.Exception.Message)" -Level "Error"
                         }
                     } else {
-                        Write-DotWinLog "Skipped applying recommendation: $($rec.Title) (WhatIf)" -Level Information
+                        Write-DotWinLog "Skipped applying recommendation: $($rec.Title) (WhatIf)" -Level "Information"
                     }
                 }
 
@@ -267,7 +267,7 @@ function Get-DotWinRecommendations {
                     $successCount = ($applicationResults | Where-Object { $_.Success }).Count
                     $failureCount = ($applicationResults | Where-Object { -not $_.Success }).Count
                     
-                    Write-DotWinLog "Recommendation application summary: $successCount successful, $failureCount failed" -Level Information
+                    Write-DotWinLog "Recommendation application summary: $successCount successful, $failureCount failed" -Level "Information"
                     
                     # Add summary to first recommendation's metadata for reference
                     if ($filteredRecommendations.Count -gt 0) {
@@ -289,35 +289,35 @@ function Get-DotWinRecommendations {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during recommendation generation: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during recommendation generation: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
 
     end {
         $totalDuration = (Get-Date) - $startTime
-        Write-DotWinLog "Recommendation generation completed in $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Recommendation generation completed in $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         # Display recommendation summary
         if ($filteredRecommendations) {
-            Write-DotWinLog "=== RECOMMENDATION SUMMARY ===" -Level Information
-            Write-DotWinLog "Total Recommendations: $($filteredRecommendations.Count)" -Level Information
+            Write-DotWinLog "=== RECOMMENDATION SUMMARY ===" -Level "Information"
+            Write-DotWinLog "Total Recommendations: $($filteredRecommendations.Count)" -Level "Information"
             
             $priorityGroups = $filteredRecommendations | Group-Object Priority
             foreach ($group in $priorityGroups) {
-                Write-DotWinLog "$($group.Name) Priority: $($group.Count) recommendations" -Level Information
+                Write-DotWinLog "$($group.Name) Priority: $($group.Count) recommendations" -Level "Information"
             }
             
             $categoryGroups = $filteredRecommendations | Group-Object Category
             foreach ($group in $categoryGroups) {
-                Write-DotWinLog "$($group.Name): $($group.Count) recommendations" -Level Information
+                Write-DotWinLog "$($group.Name): $($group.Count) recommendations" -Level "Information"
             }
             
             # Show top 3 recommendations
             $topRecommendations = $filteredRecommendations | Select-Object -First 3
-            Write-DotWinLog "=== TOP RECOMMENDATIONS ===" -Level Information
+            Write-DotWinLog "=== TOP RECOMMENDATIONS ===" -Level "Information"
             foreach ($rec in $topRecommendations) {
-                Write-DotWinLog "[$($rec.Priority)] $($rec.Title) - $($rec.Description)" -Level Information
+                Write-DotWinLog "[$($rec.Priority)] $($rec.Title) - $($rec.Description)" -Level "Information"
             }
         }
     }

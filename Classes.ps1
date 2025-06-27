@@ -1837,6 +1837,7 @@ processors=$value
         }
     }
 
+
     [void] ApplyCustomConfiguration() {
         foreach ($config in $this.Configuration.Keys) {
             $value = $this.Configuration[$config]
@@ -1862,6 +1863,545 @@ processors=$value
                     }
                 }
             }
+        }
+    }
+}
+
+# DotWin Configuration Bridge - Central integration point for module and user configurations
+class DotWinConfigurationBridge {
+    [string] $ModuleConfigPath
+    [string] $UserConfigPath
+    [hashtable] $ConfigurationCache
+    [bool] $CacheEnabled
+    [DateTime] $LastCacheUpdate
+
+    DotWinConfigurationBridge([string] $ModuleConfigPath, [string] $UserConfigPath) {
+        $this.ModuleConfigPath = $ModuleConfigPath
+        $this.UserConfigPath = $UserConfigPath
+        $this.ConfigurationCache = @{}
+        $this.CacheEnabled = $true
+        $this.LastCacheUpdate = [DateTime]::MinValue
+
+        Write-Verbose "Configuration bridge initialized with module path: $ModuleConfigPath"
+        if ($UserConfigPath) {
+            Write-Verbose "User configuration path: $UserConfigPath"
+        } else {
+            Write-Verbose "No user configuration path specified"
+        }
+    }
+
+    [hashtable] ResolvePackageConfiguration([string] $Category) {
+        Write-Verbose "Resolving package configuration for category: $Category"
+
+        $cacheKey = "Packages_$Category"
+        if ($this.CacheEnabled -and $this.ConfigurationCache.ContainsKey($cacheKey)) {
+            $cachedConfig = $this.ConfigurationCache[$cacheKey]
+            if ((Get-Date) - $cachedConfig.Timestamp -lt [TimeSpan]::FromMinutes(5)) {
+                Write-Verbose "Using cached package configuration for category: $Category"
+                return $cachedConfig.Data
+            }
+        }
+
+        try {
+            # Load base configuration from module
+            $baseConfigPath = Join-Path $this.ModuleConfigPath "Packages.ps1"
+            if (-not (Test-Path $baseConfigPath)) {
+                Write-Warning "Module package configuration not found: $baseConfigPath"
+                return @{}
+            }
+
+            Write-Verbose "Loading base package configuration from: $baseConfigPath"
+            . $baseConfigPath
+
+            # Get base packages using the module's function
+            $basePackages = @{}
+            if (Get-Command "Get-PackagesByCategory" -ErrorAction SilentlyContinue) {
+                $basePackages = Get-PackagesByCategory -Category $Category
+            } else {
+                Write-Warning "Get-PackagesByCategory function not found in module configuration"
+            }
+
+            # Load user overrides if they exist
+            $finalPackages = $basePackages
+            if ($this.UserConfigPath -and (Test-Path $this.UserConfigPath)) {
+                $userPackagesPath = Join-Path ($this.UserConfigPath) "Packages.ps1"
+                if (Test-Path $userPackagesPath) {
+                    Write-Verbose "Loading user package overrides from: $userPackagesPath"
+
+                    try {
+                        . $userPackagesPath
+
+                        # Get user packages using the user's function
+                        if (Get-Command "Get-PackagesByCategory" -ErrorAction SilentlyContinue) {
+                            $userPackages = Get-PackagesByCategory -Category $Category -ErrorAction SilentlyContinue
+                            if ($userPackages -and $userPackages.Count -gt 0) {
+                                Write-Verbose "Merging user package overrides for category: $Category"
+                                $finalPackages = $this.MergePackageConfigurations($basePackages, $userPackages)
+                            }
+                        }
+                    } catch {
+                        Write-Warning "Error loading user package configuration: $($_.Exception.Message)"
+                    }
+                } else {
+                    Write-Verbose "User package configuration not found: $userPackagesPath"
+                }
+            }
+
+            # Cache the result
+            if ($this.CacheEnabled) {
+                $this.ConfigurationCache[$cacheKey] = @{
+                    Data = $finalPackages
+                    Timestamp = Get-Date
+                }
+            }
+
+            Write-DotWinLog "Package configuration resolved for category '$Category' with $($finalPackages.Keys.Count) package groups" -Level "Information"
+            return $finalPackages
+
+        } catch {
+            Write-DotWinLog "Error resolving package configuration for category '$Category': $($_.Exception.Message)" -Level "Error"
+            return @{}
+        }
+    }
+
+    [hashtable] ResolveTerminalConfiguration([string] $Theme, [bool] $IncludeProfiles, [bool] $IncludeKeybindings, [bool] $IncludeSettings) {
+        Write-Verbose "Resolving terminal configuration for theme: $Theme"
+
+        $cacheKey = "Terminal_${Theme}_${IncludeProfiles}_${IncludeKeybindings}_${IncludeSettings}"
+        if ($this.CacheEnabled -and $this.ConfigurationCache.ContainsKey($cacheKey)) {
+            $cachedConfig = $this.ConfigurationCache[$cacheKey]
+            if ((Get-Date) - $cachedConfig.Timestamp -lt [TimeSpan]::FromMinutes(5)) {
+                Write-Verbose "Using cached terminal configuration for theme: $Theme"
+                return $cachedConfig.Data
+            }
+        }
+
+        try {
+            # Load base configuration from module
+            $baseConfigPath = Join-Path $this.ModuleConfigPath "Terminal.ps1"
+            if (-not (Test-Path $baseConfigPath)) {
+                Write-Warning "Module terminal configuration not found: $baseConfigPath"
+                return @{}
+            }
+
+            Write-Verbose "Loading base terminal configuration from: $baseConfigPath"
+            . $baseConfigPath
+
+            # Get base terminal configuration using the module's function
+            $baseConfig = @{}
+            if (Get-Command "Get-TerminalConfiguration" -ErrorAction SilentlyContinue) {
+                $baseConfig = Get-TerminalConfiguration -Theme $Theme -IncludeProfiles:$IncludeProfiles -IncludeKeybindings:$IncludeKeybindings -IncludeSettings:$IncludeSettings
+            } else {
+                Write-Warning "Get-TerminalConfiguration function not found in module configuration"
+            }
+
+            # Load user overrides if they exist
+            $finalConfig = $baseConfig
+            if ($this.UserConfigPath -and (Test-Path $this.UserConfigPath)) {
+                $userTerminalPath = Join-Path ($this.UserConfigPath) "Terminal.ps1"
+                if (Test-Path $userTerminalPath) {
+                    Write-Verbose "Loading user terminal overrides from: $userTerminalPath"
+
+                    try {
+                        . $userTerminalPath
+
+                        # Get user terminal configuration using the user's function
+                        if (Get-Command "Get-TerminalConfiguration" -ErrorAction SilentlyContinue) {
+                            $userConfig = Get-TerminalConfiguration -Theme $Theme -IncludeProfiles:$IncludeProfiles -IncludeKeybindings:$IncludeKeybindings -IncludeSettings:$IncludeSettings -ErrorAction SilentlyContinue
+                            if ($userConfig -and $userConfig.Count -gt 0) {
+                                Write-Verbose "Merging user terminal overrides for theme: $Theme"
+                                $finalConfig = $this.MergeTerminalConfigurations($baseConfig, $userConfig)
+                            }
+                        }
+                    } catch {
+                        Write-Warning "Error loading user terminal configuration: $($_.Exception.Message)"
+                    }
+                } else {
+                    Write-Verbose "User terminal configuration not found: $userTerminalPath"
+                }
+            }
+
+            # Cache the result
+            if ($this.CacheEnabled) {
+                $this.ConfigurationCache[$cacheKey] = @{
+                    Data = $finalConfig
+                    Timestamp = Get-Date
+                }
+            }
+
+            Write-DotWinLog "Terminal configuration resolved for theme '$Theme'" -Level "Information"
+            return $finalConfig
+
+        } catch {
+            Write-DotWinLog "Error resolving terminal configuration for theme '$Theme': $($_.Exception.Message)" -Level "Error"
+            return @{}
+        }
+    }
+
+    [hashtable] ResolveProfileConfiguration([string] $ProfileType, [bool] $IncludeModules, [bool] $IncludeAliases, [bool] $IncludeFunctions, [bool] $IncludePrompt) {
+        Write-Verbose "Resolving profile configuration for type: $ProfileType"
+
+        $cacheKey = "Profile_${ProfileType}_${IncludeModules}_${IncludeAliases}_${IncludeFunctions}_${IncludePrompt}"
+        if ($this.CacheEnabled -and $this.ConfigurationCache.ContainsKey($cacheKey)) {
+            $cachedConfig = $this.ConfigurationCache[$cacheKey]
+            if ((Get-Date) - $cachedConfig.Timestamp -lt [TimeSpan]::FromMinutes(5)) {
+                Write-Verbose "Using cached profile configuration for type: $ProfileType"
+                return $cachedConfig.Data
+            }
+        }
+
+        try {
+            # Load base configuration from module
+            $baseConfigPath = Join-Path $this.ModuleConfigPath "Profile.ps1"
+            if (-not (Test-Path $baseConfigPath)) {
+                Write-Warning "Module profile configuration not found: $baseConfigPath"
+                return @{}
+            }
+
+            Write-Verbose "Loading base profile configuration from: $baseConfigPath"
+            . $baseConfigPath
+
+            # Get base profile configuration using the module's function
+            $baseConfig = @{}
+            if (Get-Command "Get-ProfileConfiguration" -ErrorAction SilentlyContinue) {
+                $baseConfig = Get-ProfileConfiguration -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt
+            } else {
+                Write-Warning "Get-ProfileConfiguration function not found in module configuration"
+            }
+
+            # Load user overrides if they exist
+            $finalConfig = $baseConfig
+            if ($this.UserConfigPath -and (Test-Path $this.UserConfigPath)) {
+                $userProfilePath = Join-Path ($this.UserConfigPath) "Profile.ps1"
+                if (Test-Path $userProfilePath) {
+                    Write-Verbose "Loading user profile overrides from: $userProfilePath"
+
+                    try {
+                        . $userProfilePath
+
+                        # Get user profile configuration using the user's function
+                        if (Get-Command "Get-ProfileConfiguration" -ErrorAction SilentlyContinue) {
+                            $userConfig = Get-ProfileConfiguration -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt -ErrorAction SilentlyContinue
+                            if ($userConfig -and $userConfig.Count -gt 0) {
+                                Write-Verbose "Merging user profile overrides for type: $ProfileType"
+                                $finalConfig = $this.MergeProfileConfigurations($baseConfig, $userConfig)
+                            }
+                        }
+                    } catch {
+                        Write-Warning "Error loading user profile configuration: $($_.Exception.Message)"
+                    }
+                } else {
+                    Write-Verbose "User profile configuration not found: $userProfilePath"
+                }
+            }
+
+            # Cache the result
+            if ($this.CacheEnabled) {
+                $this.ConfigurationCache[$cacheKey] = @{
+                    Data = $finalConfig
+                    Timestamp = Get-Date
+                }
+            }
+
+            Write-DotWinLog "Profile configuration resolved for type '$ProfileType'" -Level "Information"
+            return $finalConfig
+
+        } catch {
+            Write-DotWinLog "Error resolving profile configuration for type '$ProfileType': $($_.Exception.Message)" -Level "Error"
+            return @{}
+        }
+    }
+
+    [hashtable] MergePackageConfigurations([hashtable] $Base, [hashtable] $Override) {
+        Write-Verbose "Merging package configurations with user overrides"
+
+        if (-not $Base) { $Base = @{} }
+        if (-not $Override) { return $Base }
+
+        # Deep merge with user configuration taking precedence
+        $merged = $this.DeepCloneHashtable($Base)
+
+        foreach ($key in $Override.Keys) {
+            if ($merged.ContainsKey($key)) {
+                if ($merged[$key] -is [hashtable] -and $Override[$key] -is [hashtable]) {
+                    # Recursively merge hashtables
+                    $merged[$key] = $this.MergePackageConfigurations($merged[$key], $Override[$key])
+                } elseif ($merged[$key] -is [array] -and $Override[$key] -is [array]) {
+                    # For arrays, combine and remove duplicates based on Id property
+                    $mergedArray = [System.Collections.ArrayList]::new()
+
+                    # Add base items
+                    foreach ($item in $merged[$key]) {
+                        $mergedArray.Add($item)
+                    }
+
+                    # Add override items, replacing existing ones with same Id
+                    foreach ($overrideItem in $Override[$key]) {
+                        if ($overrideItem -is [hashtable] -and $overrideItem.ContainsKey('Id')) {
+                            # Find existing item with same Id
+                            $existingIndex = -1
+                            for ($i = 0; $i -lt $mergedArray.Count; $i++) {
+                                if ($mergedArray[$i] -is [hashtable] -and $mergedArray[$i].ContainsKey('Id') -and $mergedArray[$i].Id -eq $overrideItem.Id) {
+                                    $existingIndex = $i
+                                    break
+                                }
+                            }
+
+                            if ($existingIndex -ge 0) {
+                                # Replace existing item
+                                $mergedArray[$existingIndex] = $overrideItem
+                                Write-Verbose "Replaced package configuration for Id: $($overrideItem.Id)"
+                            } else {
+                                # Add new item
+                                $mergedArray.Add($overrideItem)
+                                Write-Verbose "Added new package configuration for Id: $($overrideItem.Id)"
+                            }
+                        } else {
+                            # Add item without Id checking
+                            $mergedArray.Add($overrideItem)
+                        }
+                    }
+
+                    $merged[$key] = $mergedArray.ToArray()
+                } else {
+                    # Override takes precedence for other types
+                    $merged[$key] = $Override[$key]
+                    Write-Verbose "Overrode package configuration key: $key"
+                }
+            } else {
+                # Add new key from override
+                $merged[$key] = $Override[$key]
+                Write-Verbose "Added new package configuration key: $key"
+            }
+        }
+
+        return $merged
+    }
+
+    [hashtable] MergeTerminalConfigurations([hashtable] $Base, [hashtable] $Override) {
+        Write-Verbose "Merging terminal configurations with user overrides"
+
+        if (-not $Base) { $Base = @{} }
+        if (-not $Override) { return $Base }
+
+        # Specialized merge for terminal configurations
+        $merged = $this.DeepCloneHashtable($Base)
+
+        foreach ($key in $Override.Keys) {
+            switch ($key) {
+                'profiles' {
+                    if ($merged.ContainsKey('profiles') -and $Override.profiles -and $Override.profiles.list) {
+                        Write-Verbose "Merging terminal profiles"
+
+                        # Ensure merged profiles structure exists
+                        if (-not $merged.profiles) { $merged.profiles = @{} }
+                        if (-not $merged.profiles.list) { $merged.profiles.list = @() }
+
+                        # Merge profile lists by GUID
+                        $mergedProfiles = [System.Collections.ArrayList]::new($merged.profiles.list)
+
+                        foreach ($overrideProfile in $Override.profiles.list) {
+                            $existingProfileIndex = -1
+                            for ($i = 0; $i -lt $mergedProfiles.Count; $i++) {
+                                if ($mergedProfiles[$i].guid -eq $overrideProfile.guid) {
+                                    $existingProfileIndex = $i
+                                    break
+                                }
+                            }
+
+                            if ($existingProfileIndex -ge 0) {
+                                # Update existing profile
+                                foreach ($profileKey in $overrideProfile.Keys) {
+                                    $mergedProfiles[$existingProfileIndex][$profileKey] = $overrideProfile[$profileKey]
+                                }
+                                Write-Verbose "Updated terminal profile: $($overrideProfile.guid)"
+                            } else {
+                                # Add new profile
+                                $mergedProfiles.Add($overrideProfile)
+                                Write-Verbose "Added new terminal profile: $($overrideProfile.guid)"
+                            }
+                        }
+
+                        $merged.profiles.list = $mergedProfiles.ToArray()
+                    } else {
+                        $merged[$key] = $Override[$key]
+                    }
+                }
+                'schemes' {
+                    if ($merged.ContainsKey('schemes') -and $Override.schemes) {
+                        Write-Verbose "Merging terminal color schemes"
+
+                        # Merge color schemes by name
+                        $mergedSchemes = [System.Collections.ArrayList]::new($merged.schemes)
+
+                        foreach ($overrideScheme in $Override.schemes) {
+                            $existingSchemeIndex = -1
+                            for ($i = 0; $i -lt $mergedSchemes.Count; $i++) {
+                                if ($mergedSchemes[$i].name -eq $overrideScheme.name) {
+                                    $existingSchemeIndex = $i
+                                    break
+                                }
+                            }
+
+                            if ($existingSchemeIndex -ge 0) {
+                                # Update existing scheme
+                                foreach ($schemeKey in $overrideScheme.Keys) {
+                                    $mergedSchemes[$existingSchemeIndex][$schemeKey] = $overrideScheme[$schemeKey]
+                                }
+                                Write-Verbose "Updated terminal color scheme: $($overrideScheme.name)"
+                            } else {
+                                # Add new scheme
+                                $mergedSchemes.Add($overrideScheme)
+                                Write-Verbose "Added new terminal color scheme: $($overrideScheme.name)"
+                            }
+                        }
+
+                        $merged.schemes = $mergedSchemes.ToArray()
+                    } else {
+                        $merged[$key] = $Override[$key]
+                    }
+                }
+                default {
+                    $merged[$key] = $Override[$key]
+                    Write-Verbose "Overrode terminal configuration key: $key"
+                }
+            }
+        }
+
+        return $merged
+    }
+
+    [hashtable] MergeProfileConfigurations([hashtable] $Base, [hashtable] $Override) {
+        Write-Verbose "Merging profile configurations with user overrides"
+
+        if (-not $Base) { $Base = @{} }
+        if (-not $Override) { return $Base }
+
+        # Specialized merge for PowerShell profile configurations
+        $merged = $this.DeepCloneHashtable($Base)
+
+        foreach ($key in $Override.Keys) {
+            switch ($key) {
+                'Modules' {
+                    if ($merged.ContainsKey('Modules')) {
+                        Write-Verbose "Merging PowerShell modules"
+
+                        # Merge module lists, avoiding duplicates
+                        $mergedModules = [System.Collections.ArrayList]::new($merged.Modules)
+
+                        foreach ($module in $Override.Modules) {
+                            if ($module -is [hashtable]) {
+                                $existingIndex = -1
+                                for ($i = 0; $i -lt $mergedModules.Count; $i++) {
+                                    if ($mergedModules[$i] -is [hashtable] -and $mergedModules[$i].Name -eq $module.Name) {
+                                        $existingIndex = $i
+                                        break
+                                    }
+                                }
+
+                                if ($existingIndex -ge 0) {
+                                    # Update existing module configuration
+                                    foreach ($moduleKey in $module.Keys) {
+                                        $mergedModules[$existingIndex][$moduleKey] = $module[$moduleKey]
+                                    }
+                                    Write-Verbose "Updated PowerShell module: $($module.Name)"
+                                } else {
+                                    $mergedModules.Add($module)
+                                    Write-Verbose "Added PowerShell module: $($module.Name)"
+                                }
+                            } else {
+                                if ($module -notin $mergedModules) {
+                                    $mergedModules.Add($module)
+                                    Write-Verbose "Added PowerShell module: $module"
+                                }
+                            }
+                        }
+
+                        $merged.Modules = $mergedModules.ToArray()
+                    } else {
+                        $merged[$key] = $Override[$key]
+                    }
+                }
+                'Aliases' {
+                    if ($merged.ContainsKey('Aliases')) {
+                        Write-Verbose "Merging PowerShell aliases"
+
+                        # Merge aliases, with override taking precedence
+                        foreach ($aliasKey in $Override.Aliases.Keys) {
+                            $merged.Aliases[$aliasKey] = $Override.Aliases[$aliasKey]
+                            Write-Verbose "Set PowerShell alias: $aliasKey"
+                        }
+                    } else {
+                        $merged[$key] = $Override[$key]
+                    }
+                }
+                'Functions' {
+                    if ($merged.ContainsKey('Functions')) {
+                        Write-Verbose "Merging PowerShell functions"
+
+                        # Merge functions, with override taking precedence
+                        foreach ($functionKey in $Override.Functions.Keys) {
+                            $merged.Functions[$functionKey] = $Override.Functions[$functionKey]
+                            Write-Verbose "Set PowerShell function: $functionKey"
+                        }
+                    } else {
+                        $merged[$key] = $Override[$key]
+                    }
+                }
+                default {
+                    $merged[$key] = $Override[$key]
+                    Write-Verbose "Overrode profile configuration key: $key"
+                }
+            }
+        }
+
+        return $merged
+    }
+
+    [hashtable] DeepCloneHashtable([hashtable] $Source) {
+        if (-not $Source) { return @{} }
+
+        $clone = @{}
+        foreach ($key in $Source.Keys) {
+            if ($Source[$key] -is [hashtable]) {
+                $clone[$key] = $this.DeepCloneHashtable($Source[$key])
+            } elseif ($Source[$key] -is [array]) {
+                $clonedArray = @()
+                foreach ($item in $Source[$key]) {
+                    if ($item -is [hashtable]) {
+                        $clonedArray += $this.DeepCloneHashtable($item)
+                    } else {
+                        $clonedArray += $item
+                    }
+                }
+                $clone[$key] = $clonedArray
+            } else {
+                $clone[$key] = $Source[$key]
+            }
+        }
+        return $clone
+    }
+
+    [void] ClearCache() {
+        Write-Verbose "Clearing configuration cache"
+        $this.ConfigurationCache.Clear()
+        $this.LastCacheUpdate = Get-Date
+    }
+
+    [void] SetCacheEnabled([bool] $Enabled) {
+        $this.CacheEnabled = $Enabled
+        Write-Verbose "Configuration cache enabled: $Enabled"
+        if (-not $Enabled) {
+            $this.ClearCache()
+        }
+    }
+
+    [hashtable] GetCacheStatistics() {
+        return @{
+            CacheEnabled = $this.CacheEnabled
+            CachedItems = $this.ConfigurationCache.Keys.Count
+            LastCacheUpdate = $this.LastCacheUpdate
+            CacheKeys = $this.ConfigurationCache.Keys
         }
     }
 }

@@ -322,16 +322,16 @@ function Test-ConsoleOutputCoordination {
     $progressId = Start-DotWinProgress -Activity "Output Coordination Test" -Status "Testing coordinated output"
     
     # Mix progress updates with various log levels
-    Write-DotWinLog -Message "Information message during progress" -Level Information -ShowWithProgress
+    Write-DotWinLog -Message "Information message during progress" -Level "Information" -ShowWithProgress
     Write-DotWinProgress -ProgressId $progressId -PercentComplete 25 -Status "25% complete"
     
-    Write-DotWinLog -Message "Warning message during progress" -Level Warning -ShowWithProgress
+    Write-DotWinLog -Message "Warning message during progress" -Level "Warning" -ShowWithProgress
     Write-DotWinProgress -ProgressId $progressId -PercentComplete 50 -Status "50% complete"
     
-    Write-DotWinLog -Message "Verbose message during progress" -Level Verbose -ShowWithProgress
+    Write-DotWinLog -Message "Verbose message during progress" -Level "Verbose" -ShowWithProgress
     Write-DotWinProgress -ProgressId $progressId -PercentComplete 75 -Status "75% complete"
     
-    Write-DotWinLog -Message "Error message during progress" -Level Error -ShowWithProgress
+    Write-DotWinLog -Message "Error message during progress" -Level "Error" -ShowWithProgress
     Write-DotWinProgress -ProgressId $progressId -PercentComplete 100 -Status "100% complete"
     
     Complete-DotWinProgress -ProgressId $progressId -Status "Output coordination test completed"

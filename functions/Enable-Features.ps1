@@ -81,7 +81,7 @@ function Enable-Features {
     )
 
     begin {
-        Write-DotWinLog "Starting Windows features enablement process" -Level Information
+        Write-DotWinLog "Starting Windows features enablement process" -Level "Information"
         
         # Validate environment
         $envTest = Test-DotWinEnvironment
@@ -107,28 +107,28 @@ function Enable-Features {
             switch ($PSCmdlet.ParameterSetName) {
                 'FeatureList' {
                     $featuresToEnable = $FeatureList
-                    Write-DotWinLog "Processing $($FeatureList.Count) features from list" -Level Information
+                    Write-DotWinLog "Processing $($FeatureList.Count) features from list" -Level "Information"
                 }
                 
                 'Category' {
-                    Write-DotWinLog "Loading features from category: $Category" -Level Information
+                    Write-DotWinLog "Loading features from category: $Category" -Level "Information"
                     $featuresToEnable = Get-FeaturesByCategory -Category $Category
-                    Write-DotWinLog "Found $($featuresToEnable.Count) features in category '$Category'" -Level Information
+                    Write-DotWinLog "Found $($featuresToEnable.Count) features in category '$Category'" -Level "Information"
                 }
                 
                 'ConfigFile' {
-                    Write-DotWinLog "Loading features from configuration file: $ConfigurationPath" -Level Information
+                    Write-DotWinLog "Loading features from configuration file: $ConfigurationPath" -Level "Information"
                     $configContent = Get-Content -Path $ConfigurationPath -Raw | ConvertFrom-Json
                     $featuresToEnable = $configContent.features
                 }
             }
 
             if ($featuresToEnable.Count -eq 0) {
-                Write-DotWinLog "No features to enable" -Level Warning
+                Write-DotWinLog "No features to enable" -Level "Warning"
                 return $results
             }
 
-            Write-DotWinLog "Enabling $($featuresToEnable.Count) Windows features" -Level Information
+            Write-DotWinLog "Enabling $($featuresToEnable.Count) Windows features" -Level "Information"
 
             # Process each feature
             foreach ($featureName in $featuresToEnable) {
@@ -138,7 +138,7 @@ function Enable-Features {
                 $result.ItemType = "WindowsFeature"
                 
                 try {
-                    Write-DotWinLog "Processing Windows feature: $featureName" -Level Information
+                    Write-DotWinLog "Processing Windows feature: $featureName" -Level "Information"
                     
                     # Create Windows feature configuration item
                     $featureItem = [DotWinWindowsFeature]::new($featureName)
@@ -150,14 +150,14 @@ function Enable-Features {
                         if ($isEnabled) {
                             $result.Success = $true
                             $result.Message = "Windows feature already enabled"
-                            Write-DotWinLog "Windows feature '$featureName' is already enabled" -Level Information
+                            Write-DotWinLog "Windows feature '$featureName' is already enabled" -Level "Information"
                             continue
                         }
                     }
                     
                     # Enable the feature
                     if ($PSCmdlet.ShouldProcess($featureName, "Enable Windows feature")) {
-                        Write-DotWinLog "Enabling Windows feature: $featureName" -Level Information
+                        Write-DotWinLog "Enabling Windows feature: $featureName" -Level "Information"
                         
                         # Get current state for comparison
                         $beforeState = $featureItem.GetCurrentState()
@@ -168,7 +168,7 @@ function Enable-Features {
                         # Check if restart is required
                         if ($enableResult.RestartRequired) {
                             $restartRequired = $true
-                            Write-DotWinLog "Feature '$featureName' requires a system restart" -Level Warning
+                            Write-DotWinLog "Feature '$featureName' requires a system restart" -Level "Warning"
                         }
                         
                         # Get new state and record changes
@@ -181,17 +181,17 @@ function Enable-Features {
                         
                         $result.Success = $true
                         $result.Message = "Windows feature enabled successfully"
-                        Write-DotWinLog "Successfully enabled Windows feature: $featureName" -Level Information
+                        Write-DotWinLog "Successfully enabled Windows feature: $featureName" -Level "Information"
                     } else {
                         $result.Success = $true
                         $result.Message = "Windows feature enablement skipped (WhatIf)"
-                        Write-DotWinLog "Windows feature enablement skipped: $featureName (WhatIf)" -Level Information
+                        Write-DotWinLog "Windows feature enablement skipped: $featureName (WhatIf)" -Level "Information"
                     }
                     
                 } catch {
                     $result.Success = $false
                     $result.Message = "Error enabling Windows feature: $($_.Exception.Message)"
-                    Write-DotWinLog "Error enabling Windows feature '$featureName': $($_.Exception.Message)" -Level Error
+                    Write-DotWinLog "Error enabling Windows feature '$featureName': $($_.Exception.Message)" -Level "Error"
                 } finally {
                     $result.Duration = (Get-Date) - $featureStartTime
                     $results += $result
@@ -199,7 +199,7 @@ function Enable-Features {
             }
 
         } catch {
-            Write-DotWinLog "Critical error during Windows features enablement: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Critical error during Windows features enablement: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -209,20 +209,20 @@ function Enable-Features {
         $successCount = ($results | Where-Object { $_.Success }).Count
         $failureCount = ($results | Where-Object { -not $_.Success }).Count
         
-        Write-DotWinLog "Windows features enablement completed" -Level Information
-        Write-DotWinLog "Total features processed: $($results.Count)" -Level Information
-        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level Information
-        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Windows features enablement completed" -Level "Information"
+        Write-DotWinLog "Total features processed: $($results.Count)" -Level "Information"
+        Write-DotWinLog "Successful: $successCount, Failed: $failureCount" -Level "Information"
+        Write-DotWinLog "Total duration: $($totalDuration.TotalSeconds) seconds" -Level "Information"
         
         # Handle restart if required
         if ($restartRequired) {
-            Write-DotWinLog "One or more features require a system restart to complete installation" -Level Warning
+            Write-DotWinLog "One or more features require a system restart to complete installation" -Level "Warning"
             
             if ($RestartIfRequired) {
-                Write-DotWinLog "Initiating system restart as requested" -Level Information
+                Write-DotWinLog "Initiating system restart as requested" -Level "Information"
                 Restart-Computer -Force
             } else {
-                Write-DotWinLog "Please restart your computer to complete feature installation" -Level Warning
+                Write-DotWinLog "Please restart your computer to complete feature installation" -Level "Warning"
             }
         }
         
@@ -299,7 +299,7 @@ function Get-FeaturesByCategory {
     if ($featureCategories.ContainsKey($Category)) {
         return $featureCategories[$Category]
     } else {
-        Write-DotWinLog "Unknown feature category: $Category" -Level Warning
+        Write-DotWinLog "Unknown feature category: $Category" -Level "Warning"
         return @()
     }
 }
@@ -329,7 +329,7 @@ function Get-WindowsFeatureStatus {
     
     try {
         # Get Windows Optional Features
-        Write-DotWinLog "Retrieving Windows Optional Features status" -Level Verbose
+        Write-DotWinLog "Retrieving Windows Optional Features status" -Level "Verbose"
         $optionalFeatures = if ($FeatureName) {
             Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction SilentlyContinue
         } else {
@@ -347,7 +347,7 @@ function Get-WindowsFeatureStatus {
         }
         
         # Get Windows Capabilities
-        Write-DotWinLog "Retrieving Windows Capabilities status" -Level Verbose
+        Write-DotWinLog "Retrieving Windows Capabilities status" -Level "Verbose"
         $capabilities = if ($FeatureName) {
             Get-WindowsCapability -Online -Name "*$FeatureName*" -ErrorAction SilentlyContinue
         } else {
@@ -366,7 +366,7 @@ function Get-WindowsFeatureStatus {
         
         # Get Windows Features (Server roles/features if available)
         if (Get-Command Get-WindowsFeature -ErrorAction SilentlyContinue) {
-            Write-DotWinLog "Retrieving Windows Features status" -Level Verbose
+            Write-DotWinLog "Retrieving Windows Features status" -Level "Verbose"
             $windowsFeatures = if ($FeatureName) {
                 Get-WindowsFeature -Name $FeatureName -ErrorAction SilentlyContinue
             } else {
@@ -384,11 +384,11 @@ function Get-WindowsFeatureStatus {
             }
         }
         
-        Write-DotWinLog "Retrieved status for $($features.Count) Windows features" -Level Verbose
+        Write-DotWinLog "Retrieved status for $($features.Count) Windows features" -Level "Verbose"
         return $features
         
     } catch {
-        Write-DotWinLog "Error retrieving Windows features status: $($_.Exception.Message)" -Level Error
+        Write-DotWinLog "Error retrieving Windows features status: $($_.Exception.Message)" -Level "Error"
         throw
     }
 }

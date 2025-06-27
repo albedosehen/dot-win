@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Comprehensive test script for the DotWin PowerShell module.
 

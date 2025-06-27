@@ -1,489 +1,628 @@
-# DotWin Machine Learning Framework
+# Machine Learning in DotWin
+
+DotWin incorporates machine learning capabilities to provide intelligent configuration recommendations and adaptive system management. This document explains the ML architecture, recommendation engine, and how to leverage AI-driven insights for optimal system configuration.
 
 ## Overview
 
-This document describes the machine learning capabilities and framework within the DotWin Windows 11 configuration management system. While the current implementation focuses on rule-based intelligence, the architecture is designed to incorporate advanced machine learning techniques for enhanced system profiling, recommendation generation, and predictive configuration management.
+The DotWin ML system consists of several components:
 
-## Current ML Implementation
+- **Recommendation Engine**: Analyzes system profiles to suggest optimal configurations
+- **Pattern Recognition**: Identifies common configuration patterns and user preferences
+- **Adaptive Learning**: Learns from user choices and system performance
+- **Predictive Analytics**: Anticipates configuration needs based on usage patterns
 
-### 1. Foundation Architecture
+## Architecture
 
-The DotWin system includes foundational ML classes and interfaces that provide the groundwork for machine learning capabilities:
-
-```powershell
-class DotWinMLRecommendationEngine {
-    [DotWinSystemProfile]$SystemProfile
-    [hashtable]$TrainingData
-    [hashtable]$Models
-    [string]$ModelVersion
-    
-    # Similarity-based recommendation using clustering
-    [System.Collections.Generic.List[DotWinRecommendation]] GenerateRecommendations()
-    
-    # Find systems with similar hardware/software profiles
-    [System.Collections.Generic.List[hashtable]] FindSimilarSystems()
-    
-    # Create feature vectors for ML processing
-    [hashtable] CreateFeatureVector([DotWinSystemProfile]$Profile)
-}
-```
-
-### 2. Feature Engineering
-
-The system automatically extracts meaningful features from system profiles for ML processing:
-
-#### Hardware Features
-
-- **CPU Characteristics**: Cores, threads, architecture, manufacturer, performance score
-- **Memory Profile**: Total capacity, speed, type, utilization patterns
-- **Storage Profile**: Type (SSD/HDD), capacity, performance metrics, usage patterns
-- **GPU Profile**: Manufacturer, memory, compute capability, driver version
-- **System Performance**: Benchmark scores, thermal characteristics, power consumption
-
-#### Software Features
-
-- **Package Ecosystem**: Installed package managers, package counts by category
-- **Development Environment**: Programming languages, IDEs, frameworks detected
-- **Application Categories**: Productivity, gaming, creative, business software ratios
-- **System Configuration**: Windows features enabled, registry optimizations applied
-- **Usage Patterns**: Application launch frequency, system uptime patterns
-
-#### User Behavior Features
-
-- **User Type Classification**: Developer, gamer, business, creative, general user
-- **Technical Proficiency**: Beginner, intermediate, advanced based on installed tools
-- **Workflow Patterns**: Command line usage, automation tool presence, customization level
-- **Security Posture**: Security tools installed, update patterns, configuration hardening
-
-### 3. Similarity-Based Recommendations
-
-The current ML implementation uses similarity algorithms to find comparable systems and generate recommendations:
+### ML Components
 
 ```mermaid
 graph TB
-    subgraph "Feature Extraction"
-        SP[System Profile] --> FE[Feature Extractor]
-        FE --> HF[Hardware Features]
-        FE --> SF[Software Features]
-        FE --> UF[User Features]
-    end
-    
-    subgraph "Similarity Analysis"
-        HF --> SA[Similarity Algorithm]
-        SF --> SA
-        UF --> SA
-        SA --> SS[Similar Systems]
-    end
-    
-    subgraph "Recommendation Generation"
-        SS --> RG[Recommendation Generator]
-        RG --> CR[Collaborative Recommendations]
-        CR --> PR[Prioritized Recommendations]
-    end
-    
-    subgraph "Learning Loop"
-        PR --> FB[Feedback Collection]
-        FB --> TD[Training Data]
-        TD --> MU[Model Update]
-        MU --> SA
-    end
-```
-
-## Advanced ML Capabilities (Roadmap)
-
-### 1. Predictive Configuration Management
-
-#### System Health Prediction
-
-```powershell
-class DotWinPredictiveHealthModel {
-    # Predict system issues before they occur
-    [DotWinHealthPrediction] PredictSystemHealth([DotWinSystemProfile]$Profile, [int]$DaysAhead)
-    
-    # Identify configuration drift patterns
-    [DotWinDriftPrediction] PredictConfigurationDrift([DotWinSystemProfile]$Baseline)
-    
-    # Recommend preventive maintenance
-    [System.Collections.Generic.List[DotWinRecommendation]] GeneratePreventiveRecommendations()
-}
-```
-
-#### Performance Optimization Prediction
-
-- **Resource Usage Forecasting**: Predict CPU, memory, and storage needs
-- **Bottleneck Identification**: Identify potential performance bottlenecks before they impact users
-- **Optimization Timing**: Recommend optimal times for system maintenance and updates
-
-### 2. Intelligent User Profiling
-
-#### Advanced User Type Detection
-
-```powershell
-class DotWinUserProfilingML {
-    # Multi-dimensional user classification
-    [DotWinUserProfile] ClassifyUser([DotWinSystemProfile]$Profile)
-    
-    # Predict user needs based on behavior patterns
-    [System.Collections.Generic.List[string]] PredictUserNeeds([DotWinUserProfile]$UserProfile)
-    
-    # Adaptive learning from user feedback
-    [void] UpdateUserModel([DotWinUserFeedback]$Feedback)
-}
-```
-
-#### Behavioral Pattern Recognition
-
-- **Workflow Analysis**: Identify common user workflows and optimize for them
-- **Application Usage Patterns**: Predict which applications users will need
-- **Customization Preferences**: Learn user preferences for system customization
-- **Security Behavior**: Adapt security recommendations based on user risk tolerance
-
-### 3. Anomaly Detection and Security
-
-#### Configuration Anomaly Detection
-
-```powershell
-class DotWinAnomalyDetectionModel {
-    # Detect unusual configuration changes
-    [DotWinAnomalyResult] DetectConfigurationAnomalies([DotWinSystemProfile]$Current, [DotWinSystemProfile]$Baseline)
-    
-    # Identify potential security threats
-    [DotWinSecurityThreatAssessment] AssessSecurityThreats([DotWinSystemProfile]$Profile)
-    
-    # Recommend security improvements
-    [System.Collections.Generic.List[DotWinSecurityRecommendation]] GenerateSecurityRecommendations()
-}
-```
-
-#### Security Intelligence
-
-- **Threat Pattern Recognition**: Identify patterns that indicate security threats
-- **Vulnerability Assessment**: Predict system vulnerabilities based on configuration
-- **Compliance Monitoring**: Ensure configurations meet security compliance requirements
-- **Incident Response**: Automatically respond to detected security anomalies
-
-## ML Model Architecture
-
-### 1. Feature Pipeline
-
-```mermaid
-graph LR
     subgraph "Data Collection"
-        HW[Hardware Data] --> FP[Feature Pipeline]
-        SW[Software Data] --> FP
-        USER[User Data] --> FP
-        PERF[Performance Data] --> FP
+        SP[System Profile]
+        UP[User Preferences]
+        CP[Configuration Patterns]
+        PM[Performance Metrics]
     end
     
-    subgraph "Feature Processing"
-        FP --> FE[Feature Engineering]
-        FE --> FN[Feature Normalization]
-        FN --> FS[Feature Selection]
-        FS --> FV[Feature Vectors]
+    subgraph "ML Engine"
+        FE[Feature Extraction]
+        RE[Recommendation Engine]
+        PL[Pattern Learning]
+        PA[Predictive Analytics]
     end
     
-    subgraph "Model Training"
-        FV --> MT[Model Training]
-        MT --> MV[Model Validation]
-        MV --> MD[Model Deployment]
+    subgraph "Output"
+        CR[Configuration Recommendations]
+        OI[Optimization Insights]
+        AP[Adaptive Profiles]
     end
     
-    subgraph "Inference"
-        MD --> PR[Prediction/Recommendation]
-        PR --> FB[Feedback Loop]
-        FB --> MT
-    end
+    SP --> FE
+    UP --> FE
+    CP --> FE
+    PM --> FE
+
+    FE --> RE
+    FE --> PL
+    FE --> PA
+
+    RE --> CR
+    PL --> OI
+    PA --> AP
 ```
 
-### 2. Model Types and Applications
+### Class Hierarchy
 
-#### Clustering Models
-
-- **System Similarity**: K-means clustering for finding similar system configurations
-- **User Segmentation**: Hierarchical clustering for user type classification
-- **Configuration Patterns**: DBSCAN for identifying common configuration patterns
-
-#### Classification Models
-
-- **User Type Classification**: Random Forest for multi-class user type prediction
-- **Hardware Compatibility**: SVM for hardware/software compatibility prediction
-- **Issue Classification**: Neural networks for categorizing system issues
-
-#### Regression Models
-
-- **Performance Prediction**: Linear regression for performance metric forecasting
-- **Resource Usage**: Time series regression for resource utilization prediction
-- **Optimization Impact**: Regression models for predicting optimization effectiveness
-
-#### Deep Learning Models
-
-- **Sequence Analysis**: LSTM networks for analyzing configuration change sequences
-- **Anomaly Detection**: Autoencoders for detecting unusual system configurations
-- **Natural Language Processing**: Transformer models for processing user feedback and documentation
-
-### 3. Training Data Sources
-
-#### Internal Data Collection
+The ML system is built on several key classes defined in [`Classes.ps1`](../Classes.ps1):
 
 ```powershell
-class DotWinMLDataCollector {
-    # Collect anonymized system profiles
-    [void] CollectSystemProfile([DotWinSystemProfile]$Profile, [bool]$Anonymous = $true)
+# Core ML Classes
+class DotWinRecommendationEngine {
+    [DotWinSystemProfile] $SystemProfile
+    [DotWinMLModel] $Model
+    [DotWinRecommendationContext] $Context
     
-    # Collect user feedback on recommendations
-    [void] CollectRecommendationFeedback([DotWinRecommendationFeedback]$Feedback)
+    [DotWinRecommendation[]] GenerateRecommendations()
+    [void] TrainModel([DotWinTrainingData] $data)
+    [void] UpdateModel([DotWinFeedback] $feedback)
+}
+
+class DotWinMLModel {
+    [string] $ModelType
+    [hashtable] $Parameters
+    [datetime] $LastTrained
     
-    # Collect performance metrics
-    [void] CollectPerformanceMetrics([DotWinPerformanceMetrics]$Metrics)
+    [object] Predict([object] $input)
+    [void] Train([object[]] $trainingData)
+    [void] Save([string] $path)
+    [void] Load([string] $path)
+}
+
+class DotWinRecommendation {
+    [string] $Category
+    [string] $Type
+    [object] $Configuration
+    [double] $Confidence
+    [string] $Reasoning
     
-    # Collect configuration outcomes
-    [void] CollectConfigurationOutcome([DotWinConfigurationResult]$Result)
+    [bool] IsApplicable([DotWinSystemProfile] $profile)
+    [void] Apply()
+    [DotWinRecommendationResult] Test()
 }
 ```
 
-#### External Data Integration
+## Recommendation Engine
 
-- **Hardware Databases**: CPU, GPU, and component specification databases
-- **Software Catalogs**: Package manager databases and software compatibility matrices
-- **Security Feeds**: CVE databases and security threat intelligence
-- **Performance Benchmarks**: Industry standard benchmark databases
+### Core Functionality
 
-## Implementation Strategy
-
-### Phase 1: Foundation (Current)
-
-- ✅ **Rule-Based Intelligence**: Comprehensive rule engine for recommendations
-- ✅ **Feature Extraction**: System profiling with feature vector generation
-- ✅ **Similarity Algorithms**: Basic clustering for finding similar systems
-- ✅ **Data Collection Framework**: Infrastructure for collecting training data
-
-### Phase 2: Basic ML (Next 6 months)
-
-- 🔄 **Collaborative Filtering**: Recommendation engine based on similar users
-- 🔄 **Classification Models**: User type and hardware compatibility prediction
-- 🔄 **Anomaly Detection**: Basic outlier detection for configuration anomalies
-- 🔄 **Performance Prediction**: Simple regression models for performance forecasting
-
-### Phase 3: Advanced ML (6-12 months)
-
-- 📋 **Deep Learning**: Neural networks for complex pattern recognition
-- 📋 **Time Series Analysis**: Predictive models for system health and performance
-- 📋 **Natural Language Processing**: Analysis of user feedback and documentation
-- 📋 **Reinforcement Learning**: Adaptive recommendation systems
-
-### Phase 4: AI-Driven Automation (12+ months)
-
-- 📋 **Autonomous Configuration**: Self-configuring systems based on ML insights
-- 📋 **Predictive Maintenance**: Proactive system maintenance recommendations
-- 📋 **Intelligent Troubleshooting**: AI-powered problem diagnosis and resolution
-- 📋 **Adaptive Security**: Dynamic security posture based on threat intelligence
-
-## ML Model Management
-
-### 1. Model Lifecycle
-
-```mermaid
-graph TB
-    subgraph "Development"
-        DD[Data Discovery] --> DP[Data Preparation]
-        DP --> FE[Feature Engineering]
-        FE --> MT[Model Training]
-        MT --> MV[Model Validation]
-    end
-    
-    subgraph "Deployment"
-        MV --> MD[Model Deployment]
-        MD --> MI[Model Integration]
-        MI --> MP[Model Performance Monitoring]
-    end
-    
-    subgraph "Operations"
-        MP --> MU[Model Updates]
-        MU --> MR[Model Retraining]
-        MR --> MV
-        MP --> MA[Model Analytics]
-    end
-    
-    subgraph "Governance"
-        MA --> MG[Model Governance]
-        MG --> MC[Model Compliance]
-        MC --> MV
-    end
-```
-
-### 2. Model Versioning and Deployment
+The recommendation engine analyzes your system profile and generates personalized configuration suggestions:
 
 ```powershell
-class DotWinMLModelManager {
-    # Model version management
-    [DotWinMLModel] LoadModel([string]$ModelName, [string]$Version = "latest")
-    
-    # A/B testing for model performance
-    [DotWinABTestResult] RunABTest([DotWinMLModel]$ModelA, [DotWinMLModel]$ModelB)
-    
-    # Model performance monitoring
-    [DotWinModelMetrics] MonitorModelPerformance([DotWinMLModel]$Model)
-    
-    # Automated model retraining
-    [void] ScheduleModelRetraining([string]$ModelName, [TimeSpan]$Interval)
+# Get system recommendations
+$profile = Get-DotWinSystemProfile
+$recommendations = Get-DotWinRecommendations -SystemProfile $profile
+
+# View recommendations by category
+$recommendations | Group-Object Category | ForEach-Object {
+    Write-Host "=== $($_.Name) ===" -ForegroundColor Cyan
+    $_.Group | ForEach-Object {
+        Write-Host "  $($_.Type): $($_.Configuration.Name)" -ForegroundColor Green
+        Write-Host "    Confidence: $($_.Confidence * 100)%" -ForegroundColor Yellow
+        Write-Host "    Reason: $($_.Reasoning)" -ForegroundColor Gray
+    }
 }
 ```
 
-### 3. Privacy and Ethics
+### Recommendation Categories
 
-#### Data Privacy
+#### 1. Package Recommendations
 
-- **Anonymization**: All collected data is anonymized before ML processing
-- **Opt-in Collection**: Users explicitly consent to data collection for ML
-- **Local Processing**: Sensitive data processing happens locally when possible
-- **Data Retention**: Clear policies for data retention and deletion
-
-#### Ethical AI
-
-- **Bias Detection**: Regular auditing for algorithmic bias in recommendations
-- **Transparency**: Clear explanations for ML-driven recommendations
-- **User Control**: Users can override or disable ML recommendations
-- **Fairness**: Ensure ML models work fairly across different user types and hardware
-
-## Performance Metrics and Evaluation
-
-### 1. Model Performance Metrics
-
-#### Recommendation Quality
-
-- **Precision**: Percentage of recommended configurations that are actually useful
-- **Recall**: Percentage of useful configurations that are recommended
-- **F1-Score**: Harmonic mean of precision and recall
-- **User Satisfaction**: Direct user feedback on recommendation quality
-
-#### Prediction Accuracy
-
-- **Mean Absolute Error (MAE)**: Average prediction error for continuous metrics
-- **Root Mean Square Error (RMSE)**: Standard deviation of prediction errors
-- **Classification Accuracy**: Percentage of correct classifications
-- **Area Under Curve (AUC)**: Performance of binary classification models
-
-#### System Impact
-
-- **Configuration Success Rate**: Percentage of ML-recommended configurations that apply successfully
-- **Performance Improvement**: Measured improvement in system performance after ML recommendations
-- **Issue Prevention**: Number of system issues prevented through predictive models
-- **User Adoption**: Percentage of users who accept and apply ML recommendations
-
-### 2. Continuous Learning Framework
+Based on system profile and user type:
 
 ```powershell
-class DotWinContinuousLearning {
-    # Collect feedback on recommendations
-    [void] CollectFeedback([DotWinRecommendation]$Recommendation, [DotWinUserFeedback]$Feedback)
+# Developer workstation recommendations
+$devRecommendations = Get-DotWinRecommendations -Category "Packages" -UserType "Developer"
+
+# Example output:
+# - Git (Confidence: 95%) - Essential for version control
+# - Visual Studio Code (Confidence: 90%) - Popular code editor for developers
+# - Docker Desktop (Confidence: 85%) - Containerization platform
+# - Node.js (Confidence: 80%) - JavaScript runtime for web development
+```
+
+#### 2. Terminal Configuration
+
+Optimized terminal settings based on usage patterns:
+
+```powershell
+# Terminal theme recommendations
+$terminalRecommendations = Get-DotWinRecommendations -Category "Terminal"
+
+# Example recommendations:
+# - Solarized Dark theme for developers (reduces eye strain)
+# - Cascadia Code font for programming (excellent readability)
+# - Custom key bindings for power users
+# - Profile configurations for different workflows
+```
+
+#### 3. System Optimization
+
+Performance and security recommendations:
+
+```powershell
+# System optimization recommendations
+$systemRecommendations = Get-DotWinRecommendations -Category "System"
+
+# Example recommendations:
+# - Enable Windows Defender real-time protection
+# - Configure automatic updates
+# - Optimize power settings for performance/battery
+# - Configure Windows features based on usage
+```
+
+### Recommendation Algorithm
+
+The recommendation engine uses multiple algorithms:
+
+#### 1. Rule-Based Recommendations
+
+```powershell
+class DotWinRuleBasedRecommendations {
+    [DotWinRecommendation[]] GenerateRecommendations([DotWinSystemProfile] $profile) {
+        $recommendations = @()
+
+        # Developer-specific recommendations
+        if ($profile.Software.GetUserType() -eq "Developer") {
+            $recommendations += $this.GetDeveloperRecommendations($profile)
+        }
+
+        # Hardware-based recommendations
+        if ($profile.Hardware.TotalMemoryGB -lt 8) {
+            $recommendations += $this.GetLowMemoryRecommendations($profile)
+        }
+
+        # Gaming-specific recommendations
+        if ($profile.Hardware.HasDedicatedGPU()) {
+            $recommendations += $this.GetGamingRecommendations($profile)
+        }
+
+        return $recommendations
+    }
+}
+```
+
+#### 2. Collaborative Filtering
+
+```powershell
+class DotWinCollaborativeFiltering {
+    [DotWinRecommendation[]] GenerateRecommendations([DotWinSystemProfile] $profile) {
+        # Find similar users
+        $similarUsers = $this.FindSimilarUsers($profile)
+
+        # Get their configurations
+        $configurations = $similarUsers | ForEach-Object {
+            Get-DotWinUserConfiguration -UserId $_.Id
+        }
+
+        # Recommend popular configurations among similar users
+        return $this.RankConfigurationsByPopularity($configurations, $profile)
+    }
+}
+```
+
+#### 3. Content-Based Filtering
+
+```powershell
+class DotWinContentBasedFiltering {
+    [DotWinRecommendation[]] GenerateRecommendations([DotWinSystemProfile] $profile) {
+        # Analyze current configuration
+        $currentConfig = Get-DotWinCurrentConfiguration
+
+        # Find similar configurations
+        $similarConfigs = $this.FindSimilarConfigurations($currentConfig)
+
+        # Recommend complementary items
+        return $this.GetComplementaryRecommendations($similarConfigs, $profile)
+    }
+}
+```
+
+## Feature Extraction
+
+### System Features
+
+The ML system extracts relevant features from system profiles:
+
+```powershell
+class DotWinFeatureExtractor {
+    [hashtable] ExtractFeatures([DotWinSystemProfile] $profile) {
+        return @{
+            # Hardware features
+            'cpu_cores' = $profile.Hardware.ProcessorCores
+            'memory_gb' = $profile.Hardware.TotalMemoryGB
+            'storage_type' = $profile.Hardware.PrimaryStorageType
+            'gpu_type' = $profile.Hardware.GraphicsCardType
+
+            # Software features
+            'os_version' = $profile.Software.OperatingSystemVersion
+            'installed_packages' = $profile.Software.InstalledPackages.Count
+            'user_type' = $profile.Software.GetUserType()
+
+            # Usage features
+            'primary_activities' = $profile.User.PrimaryActivities
+            'experience_level' = $profile.User.ExperienceLevel
+            'preferences' = $profile.User.Preferences
+        }
+    }
+}
+```
+
+### Configuration Features
+
+Extract features from existing configurations:
+
+```powershell
+class DotWinConfigurationFeatureExtractor {
+    [hashtable] ExtractConfigurationFeatures([object] $configuration) {
+        return @{
+            'package_categories' = $this.GetPackageCategories($configuration)
+            'terminal_themes' = $this.GetTerminalThemes($configuration)
+            'customization_level' = $this.GetCustomizationLevel($configuration)
+            'performance_focus' = $this.GetPerformanceFocus($configuration)
+            'security_level' = $this.GetSecurityLevel($configuration)
+        }
+    }
+}
+```
+
+## Model Training
+
+### Training Data Collection
+
+```powershell
+# Collect training data from user interactions
+class DotWinTrainingDataCollector {
+    [void] CollectUserFeedback([DotWinRecommendation] $recommendation, [bool] $accepted) {
+        $feedback = [DotWinFeedback]::new()
+        $feedback.RecommendationId = $recommendation.Id
+        $feedback.Accepted = $accepted
+        $feedback.Timestamp = Get-Date
+        $feedback.UserProfile = Get-DotWinSystemProfile
+
+        $this.SaveFeedback($feedback)
+    }
     
-    # Update models based on new data
-    [void] UpdateModels([DotWinTrainingData]$NewData)
+    [void] CollectConfigurationSuccess([object] $configuration, [bool] $successful) {
+        $data = [DotWinConfigurationResult]::new()
+        $data.Configuration = $configuration
+        $data.Successful = $successful
+        $data.SystemProfile = Get-DotWinSystemProfile
+
+        $this.SaveConfigurationResult($data)
+    }
+}
+```
+
+### Model Training Process
+
+```powershell
+# Train recommendation models
+function Train-DotWinRecommendationModel {
+    param(
+        [string] $ModelType = "RandomForest",
+        [string] $TrainingDataPath = "training-data.json"
+    )
     
+    # Load training data
+    $trainingData = Get-Content $TrainingDataPath | ConvertFrom-Json
+    
+    # Create and train model
+    $model = [DotWinMLModel]::new($ModelType)
+    $model.Train($trainingData)
+
     # Evaluate model performance
-    [DotWinModelEvaluation] EvaluateModel([DotWinMLModel]$Model, [DotWinTestData]$TestData)
+    $evaluation = Test-DotWinModel -Model $model -TestData $trainingData
+    Write-Host "Model Accuracy: $($evaluation.Accuracy * 100)%"
+
+    # Save trained model
+    $model.Save("models/recommendation-model.json")
+
+    return $model
+}
+```
+
+### Model Evaluation
+
+```powershell
+function Test-DotWinModel {
+    param(
+        [DotWinMLModel] $Model,
+        [object[]] $TestData
+    )
     
-    # Automated model improvement
-    [void] OptimizeModel([DotWinMLModel]$Model, [DotWinOptimizationCriteria]$Criteria)
+    $correct = 0
+    $total = $TestData.Count
+    
+    foreach ($testCase in $TestData) {
+        $prediction = $Model.Predict($testCase.Features)
+        if ($prediction -eq $testCase.ExpectedResult) {
+            $correct++
+        }
+    }
+    
+    return @{
+        Accuracy = $correct / $total
+        CorrectPredictions = $correct
+        TotalPredictions = $total
+    }
 }
 ```
 
-## Integration with DotWin Core
+## Adaptive Learning
 
-### 1. ML-Enhanced System Profiling
+### Continuous Learning
 
-The ML framework enhances the existing system profiling capabilities:
-
-```powershell
-# Enhanced profiling with ML insights
-$profile = Get-DotWinSystemProfile -IncludeMLInsights
-$profile.MLInsights.UserTypeConfidence    # 0.95 (95% confidence in Developer classification)
-$profile.MLInsights.SimilarSystems        # List of similar system configurations
-$profile.MLInsights.PredictedNeeds         # Predicted software/hardware needs
-$profile.MLInsights.OptimizationPotential # ML-calculated optimization opportunities
-```
-
-### 2. ML-Driven Recommendations
+The system continuously learns from user interactions:
 
 ```powershell
-# Get ML-enhanced recommendations
-$recommendations = Get-DotWinRecommendations -UseMLEngine -ConfidenceThreshold 0.8
-foreach ($rec in $recommendations) {
-    Write-Host "Recommendation: $($rec.Title)"
-    Write-Host "ML Confidence: $($rec.MLConfidence)"
-    Write-Host "Based on: $($rec.MLReasoning)"
-    Write-Host "Similar Systems: $($rec.SimilarSystemsCount)"
+class DotWinAdaptiveLearning {
+    [void] UpdateModelFromFeedback([DotWinFeedback[]] $feedback) {
+        # Convert feedback to training examples
+        $trainingExamples = $feedback | ForEach-Object {
+            @{
+                Features = $this.ExtractFeatures($_.UserProfile)
+                Label = $_.Accepted
+                Weight = $this.CalculateWeight($_)
+            }
+        }
+
+        # Update model with new examples
+        $this.Model.UpdateWithNewData($trainingExamples)
+    }
+
+    [double] CalculateWeight([DotWinFeedback] $feedback) {
+        # Recent feedback has higher weight
+        $daysSinceFeedback = (Get-Date) - $feedback.Timestamp
+        return [Math]::Exp(-$daysSinceFeedback.TotalDays / 30)
+    }
 }
 ```
 
-### 3. Predictive Configuration Management
+### Personalization
 
 ```powershell
-# Predictive system health assessment
-$healthPrediction = Get-DotWinHealthPrediction -DaysAhead 30
-if ($healthPrediction.RiskLevel -eq "High") {
-    $preventiveActions = Get-DotWinPreventiveRecommendations -HealthPrediction $healthPrediction
-    Invoke-DotWinConfiguration -Recommendations $preventiveActions -WhatIf
+class DotWinPersonalization {
+    [DotWinRecommendation[]] PersonalizeRecommendations(
+        [DotWinRecommendation[]] $recommendations,
+        [DotWinUserProfile] $userProfile
+    ) {
+        foreach ($recommendation in $recommendations) {
+            # Adjust confidence based on user preferences
+            $recommendation.Confidence *= $this.GetUserPreferenceScore($recommendation, $userProfile)
+
+            # Customize reasoning for user
+            $recommendation.Reasoning = $this.PersonalizeReasoning($recommendation, $userProfile)
+        }
+
+        # Sort by personalized confidence
+        return $recommendations | Sort-Object Confidence -Descending
+    }
 }
 ```
 
-## Future ML Capabilities
+## Usage Examples
 
-### 1. Advanced Analytics
+### Basic Recommendations
 
-#### System Optimization Intelligence
+```powershell
+# Get all recommendations
+$recommendations = Get-DotWinRecommendations
 
-- **Holistic Optimization**: Consider entire system ecosystem for optimization recommendations
-- **Multi-Objective Optimization**: Balance performance, security, and usability
-- **Temporal Optimization**: Optimize configurations based on time-of-day usage patterns
-- **Contextual Optimization**: Adapt optimizations based on current user context
+# Apply high-confidence recommendations automatically
+$recommendations | Where-Object { $_.Confidence -gt 0.8 } | ForEach-Object {
+    Write-Host "Applying: $($_.Type)" -ForegroundColor Green
+    $_.Apply()
+}
 
-#### Predictive Maintenance
+# Review medium-confidence recommendations
+$recommendations | Where-Object { $_.Confidence -gt 0.5 -and $_.Confidence -le 0.8 } | ForEach-Object {
+    $response = Read-Host "Apply $($_.Type)? (y/n)"
+    if ($response -eq 'y') {
+        $_.Apply()
+    }
+}
+```
 
-- **Hardware Failure Prediction**: Predict component failures before they occur
-- **Software Degradation Detection**: Identify software performance degradation patterns
-- **Capacity Planning**: Predict future resource needs based on usage trends
-- **Update Impact Assessment**: Predict the impact of system updates before applying them
+### Category-Specific Recommendations
 
-### 2. Autonomous Configuration Management
+```powershell
+# Get package recommendations for developers
+$devPackages = Get-DotWinRecommendations -Category "Packages" -UserType "Developer"
+$devPackages | ForEach-Object {
+    Write-Host "$($_.Configuration.Name): $($_.Reasoning)"
+}
 
-#### Self-Healing Systems
+# Get terminal optimization recommendations
+$terminalOptimizations = Get-DotWinRecommendations -Category "Terminal" -Focus "Performance"
+$terminalOptimizations | ForEach-Object {
+    $_.Apply()
+}
+```
 
-- **Automatic Issue Resolution**: Automatically fix common system issues
-- **Configuration Drift Correction**: Automatically correct configuration drift
-- **Performance Auto-Tuning**: Continuously optimize system performance
-- **Security Auto-Hardening**: Automatically apply security improvements
+### Custom Recommendation Filters
 
-#### Adaptive Learning
+```powershell
+# Get recommendations for specific scenarios
+$gamingRecommendations = Get-DotWinRecommendations | Where-Object {
+    $_.Category -eq "Gaming" -or
+    ($_.Category -eq "System" -and $_.Type -like "*Performance*")
+}
 
-- **User Preference Learning**: Learn and adapt to individual user preferences
-- **Environment Adaptation**: Adapt configurations based on changing environments
-- **Workload Optimization**: Optimize for specific workload patterns
-- **Continuous Improvement**: Continuously improve recommendations based on outcomes
+$securityRecommendations = Get-DotWinRecommendations | Where-Object {
+    $_.Category -eq "Security" -or
+    $_.Type -like "*Security*"
+}
+```
 
-## Conclusion
+### Feedback and Learning
 
-The DotWin machine learning framework provides a solid foundation for intelligent Windows configuration management. Starting with rule-based intelligence and similarity algorithms, the system is designed to evolve into a sophisticated AI-driven platform that can predict, prevent, and automatically resolve system issues while continuously learning and adapting to user needs.
+```powershell
+# Provide feedback on recommendations
+$recommendation = Get-DotWinRecommendations | Select-Object -First 1
+Submit-DotWinFeedback -Recommendation $recommendation -Accepted $true -Comments "Very helpful"
 
-The ML capabilities transform DotWin from a reactive configuration tool into a proactive, intelligent system that anticipates user needs, prevents problems before they occur, and continuously optimizes system performance and security. This evolution positions DotWin as a next-generation configuration management platform that leverages the power of machine learning to deliver unprecedented automation and intelligence in Windows system management.
+# Train model with new data
+$newTrainingData = Get-DotWinFeedbackData -Since (Get-Date).AddDays(-30)
+Update-DotWinRecommendationModel -TrainingData $newTrainingData
+```
 
-## References and Further Reading
+## Advanced Features
 
-### Technical Resources
+### Ensemble Methods
 
-- [PowerShell Machine Learning](https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.machinelearning/)
-- [Windows Performance Toolkit](https://docs.microsoft.com/en-us/windows-hardware/test/wpt/)
-- [System Information APIs](https://docs.microsoft.com/en-us/windows/win32/cimwin32prov/computer-system-hardware-classes)
+```powershell
+class DotWinEnsembleRecommendations {
+    [DotWinRecommendation[]] GenerateRecommendations([DotWinSystemProfile] $profile) {
+        # Get recommendations from multiple algorithms
+        $ruleBasedRecs = $this.RuleBasedEngine.GenerateRecommendations($profile)
+        $collaborativeRecs = $this.CollaborativeEngine.GenerateRecommendations($profile)
+        $contentBasedRecs = $this.ContentBasedEngine.GenerateRecommendations($profile)
 
-### ML Frameworks and Libraries
+        # Combine and weight recommendations
+        return $this.CombineRecommendations($ruleBasedRecs, $collaborativeRecs, $contentBasedRecs)
+    }
+}
+```
 
-- [ML.NET](https://dotnet.microsoft.com/apps/machinelearning-ai/ml-dotnet) - .NET machine learning framework
-- [Python Integration](https://docs.microsoft.com/en-us/windows/python/) - Python ML libraries on Windows
-- [Azure Machine Learning](https://azure.microsoft.com/services/machine-learning/) - Cloud-based ML platform
+### A/B Testing
 
-### Research Papers and Articles
+```powershell
+class DotWinABTesting {
+    [DotWinRecommendation[]] GetRecommendationsWithTesting([DotWinSystemProfile] $profile) {
+        # Determine test group
+        $testGroup = $this.GetTestGroup($profile.User.Id)
 
-- Configuration Management Automation with Machine Learning
-- Predictive System Administration using AI
-- Anomaly Detection in System Configurations
-- User Behavior Analysis for System Optimization
+        switch ($testGroup) {
+            "A" { return $this.AlgorithmA.GenerateRecommendations($profile) }
+            "B" { return $this.AlgorithmB.GenerateRecommendations($profile) }
+            default { return $this.DefaultAlgorithm.GenerateRecommendations($profile) }
+        }
+    }
+}
+```
+
+### Explainable AI
+
+```powershell
+class DotWinExplainableRecommendations {
+    [string] ExplainRecommendation([DotWinRecommendation] $recommendation, [DotWinSystemProfile] $profile) {
+        $explanation = @()
+
+        # Feature importance
+        $features = $this.GetImportantFeatures($recommendation, $profile)
+        $explanation += "Key factors:"
+        $features | ForEach-Object {
+            $explanation += "  - $($_.Name): $($_.Value) (importance: $($_.Importance))"
+        }
+
+        # Similar users
+        $similarUsers = $this.FindSimilarUsers($profile)
+        $explanation += "Users with similar profiles also chose:"
+        $similarUsers.PopularChoices | ForEach-Object {
+            $explanation += "  - $($_)"
+        }
+
+        return $explanation -join "`n"
+    }
+}
+```
+
+## Configuration
+
+### ML Settings
+
+Configure ML behavior through DotWin settings:
+
+```powershell
+# Configure recommendation engine
+Set-DotWinConfiguration -Section "MachineLearning" -Settings @{
+    EnableRecommendations = $true
+    RecommendationAlgorithm = "Ensemble"
+    MinimumConfidence = 0.6
+    MaxRecommendations = 10
+    EnableLearning = $true
+    FeedbackWeight = 0.8
+}
+
+# Configure model training
+Set-DotWinConfiguration -Section "ModelTraining" -Settings @{
+    AutoTraining = $true
+    TrainingInterval = "Weekly"
+    MinimumFeedbackSamples = 100
+    ModelValidationSplit = 0.2
+}
+```
+
+### Privacy Settings
+
+```powershell
+# Configure data collection and privacy
+Set-DotWinConfiguration -Section "Privacy" -Settings @{
+    CollectUsageData = $true
+    CollectSystemProfile = $true
+    ShareAnonymousData = $false
+    DataRetentionDays = 365
+}
+```
+
+## Performance Monitoring
+
+### Model Performance Metrics
+
+```powershell
+# Monitor recommendation performance
+$metrics = Get-DotWinMLMetrics
+Write-Host "Recommendation Accuracy: $($metrics.Accuracy * 100)%"
+Write-Host "User Satisfaction: $($metrics.UserSatisfaction * 100)%"
+Write-Host "Adoption Rate: $($metrics.AdoptionRate * 100)%"
+
+# Model drift detection
+$drift = Test-DotWinModelDrift
+if ($drift.HasDrift) {
+    Write-Warning "Model drift detected. Consider retraining."
+    Start-DotWinModelRetraining
+}
+```
+
+### Performance Optimization
+
+```powershell
+# Optimize recommendation performance
+Optimize-DotWinRecommendationEngine -MaxLatency 500ms -CacheSize 1000
+
+# Profile recommendation generation
+Measure-Command {
+    Get-DotWinRecommendations -SystemProfile $profile
+} | Select-Object TotalMilliseconds
+```
+
+## Future Enhancements
+
+### Planned ML Features
+
+1. **Deep Learning Models**: Neural networks for complex pattern recognition
+2. **Natural Language Processing**: Understanding user intent from text descriptions
+3. **Computer Vision**: Analyzing screenshots for UI/UX recommendations
+4. **Reinforcement Learning**: Learning optimal configuration sequences
+5. **Federated Learning**: Learning from multiple users while preserving privacy
+
+### Integration Opportunities
+
+1. **Cloud ML Services**: Integration with Azure ML, AWS SageMaker
+2. **External Data Sources**: Package popularity, security advisories
+3. **Community Feedback**: Crowdsourced recommendations and ratings
+4. **Telemetry Integration**: Performance metrics from configured systems
+
+---
+
+The DotWin ML system provides intelligent, personalized configuration recommendations that improve over time. By leveraging machine learning, DotWin can help users discover optimal configurations and automate routine system management tasks.

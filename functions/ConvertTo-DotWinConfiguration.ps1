@@ -99,7 +99,7 @@ function ConvertTo-DotWinConfiguration {
     )
 
     begin {
-        Write-DotWinLog "Starting configuration conversion" -Level Information
+        Write-DotWinLog "Starting configuration conversion" -Level "Information"
         $startTime = Get-Date
 
         # Check if output file exists and Force is not specified
@@ -116,18 +116,18 @@ function ConvertTo-DotWinConfiguration {
         if ($InputObject) {
             if ($InputObject -is [array] -and $InputObject.Count -gt 0 -and $InputObject[0].GetType().Name -eq 'DotWinRecommendation') {
                 # Array of recommendations from pipeline
-                Write-DotWinLog "Received $($InputObject.Count) recommendations from pipeline" -Level Information
+                Write-DotWinLog "Received $($InputObject.Count) recommendations from pipeline" -Level "Information"
                 $pipelineRecommendations += $InputObject
                 return  # Continue processing in end block
             } elseif ($InputObject.GetType().Name -eq 'DotWinRecommendation') {
                 # Single recommendation from pipeline
                 $title = if ($InputObject.PSObject.Properties.Name -contains 'Title') { $InputObject.Title } else { "Unknown Recommendation" }
-                Write-DotWinLog "Received recommendation from pipeline: $title" -Level Information
+                Write-DotWinLog "Received recommendation from pipeline: $title" -Level "Information"
                 $pipelineRecommendations += $InputObject
                 return  # Continue processing in end block
             } elseif ($InputObject.GetType().Name -eq 'DotWinSystemProfiler') {
                 # System profile from pipeline
-                Write-DotWinLog "Received SystemProfile from pipeline" -Level Information
+                Write-DotWinLog "Received SystemProfile from pipeline" -Level "Information"
                 $SystemProfile = $InputObject
             }
         }
@@ -142,7 +142,7 @@ function ConvertTo-DotWinConfiguration {
         }
         try {
             # Create new configuration object
-            Write-DotWinLog "Creating configuration: $ConfigurationName" -Level Information
+            Write-DotWinLog "Creating configuration: $ConfigurationName" -Level "Information"
             $configuration = [DotWinConfiguration]::new($ConfigurationName)
             $configuration.Version = "1.0.0"
             $configuration.Description = "Auto-generated configuration from system profile and recommendations"
@@ -166,19 +166,19 @@ function ConvertTo-DotWinConfiguration {
 
             # Process recommendations if provided
             if ($Recommendations -and $Recommendations.Count -gt 0) {
-                Write-DotWinLog "Processing $($Recommendations.Count) recommendations" -Level Information
+                Write-DotWinLog "Processing $($Recommendations.Count) recommendations" -Level "Information"
                 
                 # Filter recommendations by priority and category
                 $filteredRecommendations = $Recommendations
                 
                 if ($Priority) {
                     $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Priority -in $Priority }
-                    Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                    Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level "Information"
                 }
                 
                 if ($Category) {
                     $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Category -in $Category }
-                    Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                    Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level "Information"
                 }
 
                 # Convert recommendations to configuration items
@@ -266,18 +266,18 @@ function ConvertTo-DotWinConfiguration {
                             
                             $configuration.AddItem($configItem)
                             $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
-                            Write-DotWinLog "Added configuration item: $title" -Level Verbose
+                            Write-DotWinLog "Added configuration item: $title" -Level "Verbose"
                         }
                     } catch {
                         $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
-                        Write-DotWinLog "Failed to convert recommendation '$title': $($_.Exception.Message)" -Level Warning
+                        Write-DotWinLog "Failed to convert recommendation '$title': $($_.Exception.Message)" -Level "Warning"
                     }
                 }
             }
 
             # Add system profile-based configuration items if profile is provided
             if ($SystemProfile) {
-                Write-DotWinLog "Adding profile-based configuration items" -Level Information
+                Write-DotWinLog "Adding profile-based configuration items" -Level "Information"
                 
                 # Add hardware-specific optimizations
                 $hardwareCategory = $SystemProfile.Hardware.GetHardwareCategory()
@@ -332,7 +332,7 @@ function ConvertTo-DotWinConfiguration {
 
             # Save to file if OutputPath is specified
             if ($OutputPath) {
-                Write-DotWinLog "Saving configuration to: $OutputPath" -Level Information
+                Write-DotWinLog "Saving configuration to: $OutputPath" -Level "Information"
                 
                 # Create the JSON structure that matches the example configurations
                 $jsonConfig = @{
@@ -383,18 +383,18 @@ function ConvertTo-DotWinConfiguration {
                 $jsonContent = $jsonConfig | ConvertTo-Json -Depth 10
                 Set-Content -Path $OutputPath -Value $jsonContent -Encoding UTF8
                 
-                Write-DotWinLog "Configuration saved successfully to: $OutputPath" -Level Information
-                Write-DotWinLog "Configuration contains $($configuration.Items.Count) items" -Level Information
+                Write-DotWinLog "Configuration saved successfully to: $OutputPath" -Level "Information"
+                Write-DotWinLog "Configuration contains $($configuration.Items.Count) items" -Level "Information"
                 
                 return $OutputPath
             } else {
                 # Return the configuration object
-                Write-DotWinLog "Returning configuration object with $($configuration.Items.Count) items" -Level Information
+                Write-DotWinLog "Returning configuration object with $($configuration.Items.Count) items" -Level "Information"
                 return $configuration
             }
 
         } catch {
-            Write-DotWinLog "Error during configuration conversion: $($_.Exception.Message)" -Level Error
+            Write-DotWinLog "Error during configuration conversion: $($_.Exception.Message)" -Level "Error"
             throw
         }
     }
@@ -402,13 +402,13 @@ function ConvertTo-DotWinConfiguration {
     end {
         # Process accumulated pipeline recommendations if any
         if ($pipelineRecommendations.Count -gt 0 -and -not $Recommendations) {
-            Write-DotWinLog "Processing $($pipelineRecommendations.Count) recommendations from pipeline in end block" -Level Information
+            Write-DotWinLog "Processing $($pipelineRecommendations.Count) recommendations from pipeline in end block" -Level "Information"
             $Recommendations = $pipelineRecommendations
 
             # Re-run the main processing logic with accumulated recommendations
             try {
                 # Create new configuration object
-                Write-DotWinLog "Creating configuration: $ConfigurationName" -Level Information
+                Write-DotWinLog "Creating configuration: $ConfigurationName" -Level "Information"
                 $configuration = [DotWinConfiguration]::new($ConfigurationName)
 
                 # Safely set properties
@@ -438,19 +438,19 @@ function ConvertTo-DotWinConfiguration {
 
                 # Process recommendations if provided
                 if ($Recommendations -and $Recommendations.Count -gt 0) {
-                    Write-DotWinLog "Processing $($Recommendations.Count) recommendations" -Level Information
+                    Write-DotWinLog "Processing $($Recommendations.Count) recommendations" -Level "Information"
 
                     # Filter recommendations by priority and category
                     $filteredRecommendations = $Recommendations
 
                     if ($Priority) {
                         $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Priority -in $Priority }
-                        Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                        Write-DotWinLog "Filtered by priority: $($Priority -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level "Information"
                     }
 
                     if ($Category) {
                         $filteredRecommendations = $filteredRecommendations | Where-Object { $_.Category -in $Category }
-                        Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level Information
+                        Write-DotWinLog "Filtered by category: $($Category -join ', ') - $($filteredRecommendations.Count) recommendations remain" -Level "Information"
                     }
 
                     # Convert recommendations to configuration items
@@ -538,18 +538,18 @@ function ConvertTo-DotWinConfiguration {
 
                                 $configuration.AddItem($configItem)
                                 $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
-                                Write-DotWinLog "Added configuration item: $title" -Level Verbose
+                                Write-DotWinLog "Added configuration item: $title" -Level "Verbose"
                             }
                         } catch {
                             $title = if ($recommendation.PSObject.Properties.Name -contains 'Title') { $recommendation.Title } else { "Unknown" }
-                            Write-DotWinLog "Failed to convert recommendation '$title': $($_.Exception.Message)" -Level Warning
+                            Write-DotWinLog "Failed to convert recommendation '$title': $($_.Exception.Message)" -Level "Warning"
                         }
                     }
                 }
 
                 # Save to file if OutputPath is specified
                 if ($OutputPath) {
-                    Write-DotWinLog "Saving configuration to: $OutputPath" -Level Information
+                    Write-DotWinLog "Saving configuration to: $OutputPath" -Level "Information"
 
                     # Create the JSON structure that matches the example configurations
                     $jsonConfig = @{
@@ -600,23 +600,23 @@ function ConvertTo-DotWinConfiguration {
                     $jsonContent = $jsonConfig | ConvertTo-Json -Depth 10
                     Set-Content -Path $OutputPath -Value $jsonContent -Encoding UTF8
 
-                    Write-DotWinLog "Configuration saved successfully to: $OutputPath" -Level Information
-                    Write-DotWinLog "Configuration contains $($configuration.Items.Count) items" -Level Information
+                    Write-DotWinLog "Configuration saved successfully to: $OutputPath" -Level "Information"
+                    Write-DotWinLog "Configuration contains $($configuration.Items.Count) items" -Level "Information"
 
                     return $OutputPath
                 } else {
                     # Return the configuration object
-                    Write-DotWinLog "Returning configuration object with $($configuration.Items.Count) items" -Level Information
+                    Write-DotWinLog "Returning configuration object with $($configuration.Items.Count) items" -Level "Information"
                     return $configuration
                 }
 
             } catch {
-                Write-DotWinLog "Error during configuration conversion: $($_.Exception.Message)" -Level Error
+                Write-DotWinLog "Error during configuration conversion: $($_.Exception.Message)" -Level "Error"
                 throw
             }
         }
 
         $totalDuration = (Get-Date) - $startTime
-        Write-DotWinLog "Configuration conversion completed in $($totalDuration.TotalSeconds) seconds" -Level Information
+        Write-DotWinLog "Configuration conversion completed in $($totalDuration.TotalSeconds) seconds" -Level "Information"
     }
 }
