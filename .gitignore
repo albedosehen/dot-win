@@ -23,3 +23,5 @@
 !examples/**
 !plugins/
 !plugins/**
+!Classes/
+!Classes/**
