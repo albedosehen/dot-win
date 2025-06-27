@@ -180,6 +180,72 @@ Then run:
 Invoke-DotWinConfiguration -ConfigurationPath ".\my-programs.json"
 ```
 
+## Easy Ways to Generate Config Files
+
+DotWin gives you three simple ways to create configuration files:
+
+### Method 1: Use Ready-Made Templates (Recommended for Beginners)
+
+See what templates are available:
+
+```powershell
+New-DotWinConfigurationTemplate -ListTemplates
+```
+
+Create a template for your needs:
+
+```powershell
+# For developers
+New-DotWinConfigurationTemplate -Template Developer -OutputPath "dev-setup.json"
+
+# For gamers
+New-DotWinConfigurationTemplate -Template Gamer -OutputPath "gaming-setup.json"
+
+# For a clean, minimal setup
+New-DotWinConfigurationTemplate -Template Minimal -OutputPath "clean-setup.json"
+
+# For students
+New-DotWinConfigurationTemplate -Template Student -OutputPath "student-setup.json"
+```
+
+Then apply it:
+
+```powershell
+Invoke-DotWinConfiguration -ConfigurationPath "dev-setup.json"
+```
+
+### Method 2: Export Your Current Setup
+
+If you already have a computer set up the way you like it:
+
+```powershell
+# Save your current setup as a config file
+Export-DotWinConfiguration -OutputPath "my-backup.json"
+
+# Use it on another computer
+Invoke-DotWinConfiguration -ConfigurationPath "my-backup.json"
+```
+
+### Method 3: Convert Smart Recommendations
+
+Let DotWin analyze your system and create a config:
+
+```powershell
+# Get recommendations and save them as a config
+$recommendations = Get-DotWinRecommendations
+ConvertTo-DotWinConfiguration -Recommendations $recommendations -OutputPath "smart-setup.json"
+
+# Or do it all in one step
+Get-DotWinRecommendations | ConvertTo-DotWinConfiguration -OutputPath "auto-config.json"
+```
+
+### Which Method Should I Use?
+
+- **New to computers?** Use Method 1 (Templates) - pick "Minimal" or "Student"
+- **Know what you want?** Use Method 1 (Templates) - pick "Developer", "Gamer", etc.
+- **Have a setup you love?** Use Method 2 (Export) to back it up
+- **Want DotWin to decide?** Use Method 3 (Recommendations)
+
 ## Something Not Working?
 
 ### PowerShell Won't Let You Run Commands

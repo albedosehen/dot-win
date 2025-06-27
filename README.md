@@ -44,6 +44,55 @@ Invoke-DotWinConfiguration
 
 That's it! DotWin will now set up your system based on what it thinks will work best for you.
 
+## How to Generate Config Files
+
+DotWin makes it super easy to create your own configuration files. You have three simple ways:
+
+### 1. Create from Templates (Easiest)
+
+```powershell
+# See all available templates
+New-DotWinConfigurationTemplate -ListTemplates
+
+# Create a developer setup
+New-DotWinConfigurationTemplate -Template Developer -OutputPath "my-dev-setup.json"
+
+# Create a gaming setup
+New-DotWinConfigurationTemplate -Template Gamer -OutputPath "gaming-config.json"
+
+# Create a minimal clean setup
+New-DotWinConfigurationTemplate -Template Minimal -OutputPath "clean-setup.json"
+```
+
+### 2. Export Your Current Setup
+
+```powershell
+# Backup your current system as a config file
+Export-DotWinConfiguration -OutputPath "my-current-setup.json"
+
+# Export only packages (no system settings)
+Export-DotWinConfiguration -OutputPath "my-apps.json" -IncludePackages -IncludeSettings:$false
+```
+
+### 3. Convert Recommendations to Config
+
+```powershell
+# Get recommendations and turn them into a config file
+$recommendations = Get-DotWinRecommendations
+ConvertTo-DotWinConfiguration -Recommendations $recommendations -OutputPath "recommended-setup.json"
+
+# Or do it all in one step
+Get-DotWinRecommendations | ConvertTo-DotWinConfiguration -OutputPath "auto-config.json"
+```
+
+### Use Your Config Files
+
+Once you have a config file, apply it with:
+
+```powershell
+Invoke-DotWinConfiguration -ConfigurationPath "my-setup.json"
+```
+
 ## Common Things You Can Do
 
 ### Install Popular Programs

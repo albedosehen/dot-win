@@ -102,7 +102,10 @@
 	    'Enable-DotWinPlugin',
 	    'Disable-DotWinPlugin',
 	    'Test-DotWinEnvironment',
-	    'Get-DotWinModuleInfo'
+	    'Get-DotWinModuleInfo',
+	    'ConvertTo-DotWinConfiguration',
+	    'Export-DotWinConfiguration',
+	    'New-DotWinConfigurationTemplate'
 	)
 	
 	# Cmdlets to export from this module
