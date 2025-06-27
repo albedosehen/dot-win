@@ -32,7 +32,7 @@ Import-Module Pester -Force -ErrorAction SilentlyContinue
 
 # Explicitly import the DotWin module for testing
 Write-Host "Importing DotWin module..." -ForegroundColor Green
-Import-Module '.\DotWin.psd1' -Force
+Import-Module '..\DotWin.psd1' -Force
 
 # Test configuration
 $TestResults = @{
@@ -287,12 +287,15 @@ Invoke-DotWinTest -TestName "Package Management Functions" -Category "Packages" 
 Invoke-DotWinTest -TestName "System Configuration Functions" -Category "Configuration" -TestScript {
     # Test Enable-Features with WhatIf
     $featureResult = Enable-Features -WhatIf
+    $null = $featureResult
 
     # Test Remove-Bloatware with WhatIf
     $bloatwareResult = Remove-Bloatware -WhatIf
+    $null = $bloatwareResult
 
     # Test Disable-Telemetry with WhatIf
     $telemetryResult = Disable-Telemetry -WhatIf
+    $null = $telemetryResult
 
     # These should not throw errors in WhatIf mode
     return $true
@@ -302,9 +305,11 @@ Invoke-DotWinTest -TestName "System Configuration Functions" -Category "Configur
 Invoke-DotWinTest -TestName "Profile Configuration Functions" -Category "Configuration" -TestScript {
     # Test Set-PowershellProfile with WhatIf
     $psProfileResult = Set-PowershellProfile -WhatIf
+    $null = $psProfileResult
 
     # Test Set-TerminalProfile with WhatIf
     $terminalProfileResult = Set-TerminalProfile -WhatIf
+    $null = $terminalProfileResult
 
     # These should not throw errors in WhatIf mode
     return $true
@@ -382,9 +387,12 @@ Invoke-DotWinTest -TestName "Performance Test" -Category "Performance" -TestScri
 
     # Run a series of operations and measure time
     $status = Get-DotWinStatus
+    $null = $status
     $hwInfo = Get-ChipsetInformation
+    $null = $hwInfo
     $config = [DotWinConfiguration]::new("PerfTest")
     $testResult = Test-DotWinConfiguration -Configuration $config
+    $null = $testResult
 
     $stopwatch.Stop()
 
