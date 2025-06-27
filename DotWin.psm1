@@ -280,7 +280,7 @@ function Write-DotWinProgress {
             return $ProgressId
         } else {
             # Create new progress operation
-            $context = [DotWinProgressContext]::new($Activity)
+            [void]($context = [DotWinProgressContext]::new($Activity))
 
             if ($ParentId) {
                 $context.ParentId = $ParentId
@@ -297,7 +297,7 @@ function Write-DotWinProgress {
                 }
             }
 
-            $progressId = $script:ProgressStackManager.PushContext($context)
+            [void]($progressId = $script:ProgressStackManager.PushContext($context))
             $script:ProgressStackManager.RefreshDisplay()
 
             if ($Message) {

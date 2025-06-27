@@ -781,7 +781,8 @@ class DotWinBloatwareRemoval : DotWinConfigurationItem {
     }
 
     [void] Apply() {
-        Write-Host "Bloatware removal configuration applied" -ForegroundColor Green
+        # Bloatware removal logic would go here
+        # Removed verbose output that was causing console spam
     }
 
     [hashtable] GetCurrentState() {

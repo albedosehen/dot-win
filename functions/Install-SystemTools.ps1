@@ -76,7 +76,7 @@ function Install-SystemTools {
     )
 
     begin {
-        Write-DotWinLog "Starting system tools installation..." -Level Verbose
+        Write-Verbose "Starting system tools installation..."
     
     # Define system tools catalog
     $systemToolsCatalog = @{
@@ -274,7 +274,7 @@ function Install-SystemTools {
         )
         
         try {
-            Write-Verbose "Installing $($Tool.Name) via Winget..."
+            Write-DotWinLog "Installing $($Tool.Name) via Winget..." -Level Verbose
             
             if ($PSCmdlet.ShouldProcess($Tool.Name, "Install via Winget")) {
                 $arguments = @('install', '--id', $Tool.WingetId, '--silent', '--accept-package-agreements', '--accept-source-agreements')
@@ -328,7 +328,7 @@ function Install-SystemTools {
         )
         
         try {
-            Write-Verbose "Installing $($Tool.Name) via Chocolatey..."
+            Write-DotWinLog "Installing $($Tool.Name) via Chocolatey..." -Level Verbose
             
             # Check if Chocolatey is installed
             $chocoCommand = Get-Command 'choco' -ErrorAction SilentlyContinue
@@ -598,6 +598,6 @@ process {
 }
 
     end {
-        Write-DotWinLog "System tools installation process completed." -Level Verbose
+        Write-Verbose "System tools installation process completed."
     }
 }
