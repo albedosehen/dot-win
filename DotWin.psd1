@@ -78,6 +78,7 @@
 	
 	# Functions to export from this module
 	FunctionsToExport = @(
+	    # Core public functions
 	    'Invoke-DotWinConfiguration',
 	    'Get-DotWinStatus',
 	    'Install-Packages',
@@ -105,7 +106,25 @@
 	    'Get-DotWinModuleInfo',
 	    'ConvertTo-DotWinConfiguration',
 	    'Export-DotWinConfiguration',
-	    'New-DotWinConfigurationTemplate'
+	    'New-DotWinConfigurationTemplate',
+
+	    # Configuration Bridge functions (Phase 1 implementation)
+	    'New-DotWinConfigurationBridge',
+	    'Get-DotWinPackageConfiguration',
+	    'Get-DotWinTerminalConfiguration',
+	    'Get-DotWinProfileConfiguration',
+	    'Clear-DotWinConfigurationCache',
+	    'Set-DotWinConfigurationCacheEnabled',
+	    'Get-DotWinConfigurationCacheStatistics',
+
+	    # User Configuration Discovery functions (Phase 1 implementation)
+	    'Get-DotWinUserConfigurationPath',
+	    'Initialize-DotWinUserConfiguration',
+
+	    # Progress system functions
+	    'Write-DotWinProgress',
+	    'Start-DotWinProgress',
+	    'Complete-DotWinProgress'
 	)
 	
 	# Cmdlets to export from this module

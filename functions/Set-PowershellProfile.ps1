@@ -101,6 +101,34 @@ function Set-PowershellProfile {
             throw "Environment validation failed: $($envTest.Issues -join ', ')"
         }
 
+        # Initialize Configuration Bridge for profile management
+        try {
+            $moduleConfigPath = Join-Path $PSScriptRoot "..\config"
+            if (-not (Test-Path $moduleConfigPath)) {
+                $moduleConfigPath = Join-Path (Split-Path $PSScriptRoot -Parent) "config"
+            }
+
+            # Discover user configuration path if not provided
+            $UserConfigPath = $null
+            try {
+                Write-DotWinLog "Discovering user configuration directories" -Level "Information"
+                $userConfigs = Get-DotWinUserConfigurationPath -ErrorAction SilentlyContinue
+                if ($userConfigs -and $userConfigs.Count -gt 0) {
+                    $UserConfigPath = $userConfigs[0].Path  # Use highest priority config
+                    Write-DotWinLog "Found user configuration at: $UserConfigPath" -Level "Information"
+                }
+            } catch {
+                Write-DotWinLog "No user configuration directories found" -Level "Verbose"
+            }
+
+            # Create Configuration Bridge
+            $configBridge = New-DotWinConfigurationBridge -ModuleConfigPath $moduleConfigPath -UserConfigPath $UserConfigPath
+            Write-DotWinLog "Configuration Bridge initialized successfully for profiles" -Level "Information"
+        } catch {
+            Write-DotWinLog "Warning: Could not initialize Configuration Bridge for profile configuration: $($_.Exception.Message)" -Level "Warning"
+            $configBridge = $null
+        }
+
         $results = @()
         $startTime = Get-Date
     }
@@ -113,7 +141,20 @@ function Set-PowershellProfile {
             switch ($PSCmdlet.ParameterSetName) {
                 'ProfileType' {
                     Write-DotWinLog "Loading profile configuration for type: $ProfileType" -Level "Information"
-                    $profileConfig = Get-PowerShellProfileConfiguration -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt
+
+                    # Use Configuration Bridge with fallback to module configuration
+                    if ($configBridge) {
+                        Write-DotWinLog "Using Configuration Bridge for profile type: $ProfileType" -Level "Information"
+                        $profileConfig = Get-DotWinProfileConfiguration -Bridge $configBridge -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt
+
+                        if (-not $profileConfig -or $profileConfig.Count -eq 0) {
+                            Write-DotWinLog "Configuration Bridge did not return profile config for type: $ProfileType, falling back to module config" -Level "Warning"
+                            $profileConfig = Get-PowerShellProfileConfiguration -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt
+                        }
+                    } else {
+                        Write-DotWinLog "Configuration Bridge not available, using module configuration for profile type: $ProfileType" -Level "Information"
+                        $profileConfig = Get-PowerShellProfileConfiguration -ProfileType $ProfileType -IncludeModules:$IncludeModules -IncludeAliases:$IncludeAliases -IncludeFunctions:$IncludeFunctions -IncludePrompt:$IncludePrompt
+                    }
                 }
                 
                 'ConfigFile' {
